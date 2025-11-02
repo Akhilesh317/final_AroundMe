@@ -1,5 +1,8 @@
 """Search endpoints"""
 from fastapi import APIRouter, Depends, HTTPException
+from app.config import settings  # Add this line
+from app.schemas import SearchRequest, SearchResponse
+# ... other imports
 
 from app.cache.redis_client import RedisCache, get_redis_client
 from app.schemas.search import SearchRequest, SearchResponse
@@ -25,6 +28,14 @@ async def search(
     - Filters: price, open_now, category
     - Follow-ups: refine previous results
     """
+
+    if not settings.google_places_api_key:
+        raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY not configured")
+    if not settings.yelp_api_key:
+        raise HTTPException(status_code=500, detail="YELP_API_KEY not configured")
+    if not settings.openai_api_key:
+        raise HTTPException
+    
     try:
         cache = RedisCache(redis_client)
         service = SearchService(cache)

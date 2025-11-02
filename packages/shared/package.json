@@ -1,0 +1,14 @@
+{
+  "name": "@aroundme/shared",
+  "version": "1.0.0",
+  "description": "Shared types and OpenAPI client for Around Me",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "generate": "openapi-typescript ../api/openapi.json -o openapi.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "openapi-typescript": "^6.7.3"
+  }
+}

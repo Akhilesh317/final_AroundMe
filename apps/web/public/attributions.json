@@ -1,0 +1,45 @@
+{
+  "providers": [
+    {
+      "name": "Google Places API",
+      "url": "https://developers.google.com/maps/documentation/places/web-service",
+      "logo": "https://www.gstatic.com/images/branding/product/2x/maps_96dp.png",
+      "attribution": "Places data provided by Google Maps Platform",
+      "tos": "https://cloud.google.com/maps-platform/terms"
+    },
+    {
+      "name": "Yelp Fusion API",
+      "url": "https://www.yelp.com/developers/documentation/v3",
+      "logo": "https://s3-media0.fl.yelpcdn.com/assets/public/yelp_logo.yji-c7e89a67.png",
+      "attribution": "Business data powered by Yelp",
+      "tos": "https://www.yelp.com/developers/api_terms"
+    }
+  ],
+  "libraries": [
+    {
+      "name": "Next.js",
+      "url": "https://nextjs.org",
+      "license": "MIT"
+    },
+    {
+      "name": "React",
+      "url": "https://react.dev",
+      "license": "MIT"
+    },
+    {
+      "name": "FastAPI",
+      "url": "https://fastapi.tiangolo.com",
+      "license": "MIT"
+    },
+    {
+      "name": "LangGraph",
+      "url": "https://langchain-ai.github.io/langgraph/",
+      "license": "MIT"
+    },
+    {
+      "name": "Leaflet",
+      "url": "https://leafletjs.com",
+      "license": "BSD-2-Clause"
+    }
+  ]
+}

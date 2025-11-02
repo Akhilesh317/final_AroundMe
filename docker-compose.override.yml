@@ -1,0 +1,19 @@
+# Local development overrides
+# Place this file in project root to override deploy/compose.yml settings
+version: '3.8'
+
+services:
+  api:
+    volumes:
+      - ./apps/api:/app
+    environment:
+      - LOG_LEVEL=DEBUG
+      - AGENT_MODE=deterministic  # Faster for dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  web:
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
