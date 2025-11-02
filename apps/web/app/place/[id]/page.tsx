@@ -129,7 +129,7 @@ export default function PlaceDetailPage() {
                   <div className="flex items-center gap-3">
                     <ExternalLinkIcon className="h-5 w-5 text-muted-foreground" />
                     
-                      href={place.website}
+                      <a href={place.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm hover:underline"

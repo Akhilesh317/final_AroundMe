@@ -114,7 +114,7 @@ def generate_cache_key(
     if multi_entity:
         parts.append(json.dumps(multi_entity, sort_keys=True))
     
-    key_string = "|".join(parts)
+    key_string = "|".join(str(p) if p is not None else "" for p in parts)
     key_hash = hashlib.sha256(key_string.encode()).hexdigest()[:16]
     
     return f"search:{key_hash}"

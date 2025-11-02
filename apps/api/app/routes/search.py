@@ -34,7 +34,7 @@ async def search(
     if not settings.yelp_api_key:
         raise HTTPException(status_code=500, detail="YELP_API_KEY not configured")
     if not settings.openai_api_key:
-        raise HTTPException
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
     
     try:
         cache = RedisCache(redis_client)
@@ -45,5 +45,7 @@ async def search(
         return response
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Print full error to console
         logger.error("search_endpoint_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))

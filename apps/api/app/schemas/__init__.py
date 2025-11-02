@@ -1,42 +1,48 @@
 """Schema exports"""
-from app.schemas.places import Place, ProviderPlace, Provenance
+from app.schemas.places import Place, ProviderPlace, MatchedPartner
 from app.schemas.search import (
     SearchRequest,
     SearchResponse,
     MultiEntityIntent,
     EntitySpec,
-    Relation,
+    RelationSpec,
     SearchFilters,
     SearchContext,
+    SearchDebug,
 )
 from app.schemas.profile import (
     ProfileCreate,
-    ProfileResponse,
-    PreferenceCreate,
-    PreferenceResponse,
-    PreferenceUpdate,
+    Profile,
+    ProfilePreference,
+    ProfilePreferenceInDB,
+    PreferenceListResponse,
+    PreferenceUpdateRequest,
+    HealthResponse,
+    MetricsResponse,
 )
-from app.schemas.health import HealthResponse
 
 __all__ = [
     # Place schemas
     "Place",
     "ProviderPlace",
-    "Provenance",
+    "MatchedPartner",
     # Search schemas
     "SearchRequest",
     "SearchResponse",
     "MultiEntityIntent",
     "EntitySpec",
-    "Relation",
+    "RelationSpec",
     "SearchFilters",
     "SearchContext",
+    "SearchDebug",
     # Profile schemas
     "ProfileCreate",
-    "ProfileResponse",
-    "PreferenceCreate",
-    "PreferenceResponse",
-    "PreferenceUpdate",
-    # Health
+    "Profile",
+    "ProfilePreference",
+    "ProfilePreferenceInDB",
+    "PreferenceListResponse",
+    "PreferenceUpdateRequest",
+    # Health & Metrics
     "HealthResponse",
+    "MetricsResponse",
 ]
