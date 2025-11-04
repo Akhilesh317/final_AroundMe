@@ -9,9 +9,15 @@ import { ResultCard } from '@/components/ResultCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
-import { Loader2, MapIcon, ListIcon, Send, User, Bot, X } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Loader2, MapIcon, ListIcon, Send, User, Bot, X, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { QuickStats } from '@/components/visualizations/QuickStats'
+import { PriceDistribution } from '@/components/visualizations/PriceDistribution'
+import { RatingDistribution } from '@/components/visualizations/RatingDistribution'
+import { DistanceVisualization } from '@/components/visualizations/DistanceVisualization'
+import { CategoryBreakdown } from '@/components/visualizations/CategoryBreakdown'
+import { FeatureHeatmap } from '@/components/visualizations/FeatureHeatmap'
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
@@ -29,6 +35,7 @@ function ResultsContent() {
   const [chatMessage, setChatMessage] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [chatOpen, setChatOpen] = useState(true)
+  const [showViz, setShowViz] = useState(true)  // Add this state
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const query = searchParams.get('query') || ''
@@ -121,13 +128,13 @@ function ResultsContent() {
 
     // Build search parameters for follow-up
     const params = new URLSearchParams({
-      query: userInput,  // The follow-up text
+      query: userInput,
       lat: lat.toString(),
       lng: lng.toString(),
       radius_m: radius_m.toString(),
-      original_query: originalQuery,  // Keep track of original
-      is_followup: 'true',  // Flag as follow-up
-      result_set_id: data?.result_set_id || '',  // Pass result set ID
+      original_query: originalQuery,
+      is_followup: 'true',
+      result_set_id: data?.result_set_id || '',
     })
 
     setChatMessage('')
@@ -392,6 +399,65 @@ function ResultsContent() {
               </Button>
             </div>
           </div>
+
+          {/* 📊 VISUALIZATIONS SECTION */}
+          {sortedPlaces.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Insights & Analytics
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowViz(!showViz)}
+                >
+                  {showViz ? 'Hide' : 'Show'} Charts
+                </Button>
+              </div>
+
+              {showViz && (
+                <div className="space-y-6">
+                  {/* Quick Stats */}
+                  <QuickStats places={sortedPlaces} />
+
+                  {/* Charts Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <PriceDistribution places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <RatingDistribution places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <CategoryBreakdown places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <DistanceVisualization places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+
+                    <Card className="lg:col-span-2">
+                      <CardContent className="p-4">
+                        <FeatureHeatmap places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Results */}
           {viewMode === 'list' ? (
