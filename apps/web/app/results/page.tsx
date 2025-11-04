@@ -32,6 +32,7 @@ function ResultsContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const query = searchParams.get('query') || ''
+  const originalQuery = searchParams.get('original_query') || query
   const lat = parseFloat(searchParams.get('lat') || '32.814')
   const lng = parseFloat(searchParams.get('lng') || '-96.948')
   const radius_m = parseInt(searchParams.get('radius_m') || '3000')
@@ -39,10 +40,12 @@ function ResultsContent() {
   const priceMax = searchParams.get('price_max')
   const openNow = searchParams.get('open_now') === 'true'
   const multiEntityStr = searchParams.get('multi_entity')
+  const isFollowup = searchParams.get('is_followup') === 'true'
+  const resultSetId = searchParams.get('result_set_id')
 
-  // Fetch data FIRST
+  // Fetch data
   const { data, isLoading, error } = useQuery({
-    queryKey: ['search', query, lat, lng, radius_m, priceMin, priceMax, openNow, multiEntityStr],
+    queryKey: ['search', query, lat, lng, radius_m, priceMin, priceMax, openNow, multiEntityStr, isFollowup, resultSetId],
     queryFn: () => {
       const filters: any = {}
       if (priceMin && priceMax) {
@@ -62,27 +65,36 @@ function ResultsContent() {
         filters: Object.keys(filters).length > 0 ? filters : undefined,
         multi_entity: multiEntity,
         top_k: 30,
+        context: isFollowup ? {
+          follow_up: true,
+          result_set_id: resultSetId || undefined,
+          original_query: originalQuery
+        } : undefined,
       })
     },
   })
 
-  // Add initial query to messages (after data is available)
+  // Add initial query to messages
   useEffect(() => {
     if (query && messages.length === 0 && data?.places) {
+      const isRefinement = isFollowup && originalQuery !== query
+      
       setMessages([
         {
           role: 'user',
-          content: query,
+          content: isRefinement ? query : originalQuery,
           timestamp: new Date(),
         },
         {
           role: 'assistant',
-          content: `I found ${data.places.length} places matching "${query}". You can refine your search by asking me to filter by price, distance, ratings, or specific features!`,
+          content: isRefinement 
+            ? `I filtered the results based on "${query}". Found ${data.places.length} matching places!`
+            : `I found ${data.places.length} places matching "${query}". You can refine your search by asking me to filter by price, distance, ratings, or specific features!`,
           timestamp: new Date(),
         },
       ])
     }
-  }, [query, data, messages.length])
+  }, [query, data, messages.length, isFollowup, originalQuery])
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -93,33 +105,61 @@ function ResultsContent() {
     scrollToBottom()
   }, [messages])
 
+  // 🤖 AI-POWERED FOLLOW-UP HANDLER
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return
 
-    // Add user message
+    const userInput = chatMessage.trim()
+
+    // Add user message to chat
     const userMessage: Message = {
       role: 'user',
-      content: chatMessage.trim(),
+      content: userInput,
       timestamp: new Date(),
     }
     setMessages((prev) => [...prev, userMessage])
 
-    // Navigate with new query
+    // Build search parameters for follow-up
     const params = new URLSearchParams({
-      query: chatMessage.trim(),
+      query: userInput,  // The follow-up text
       lat: lat.toString(),
       lng: lng.toString(),
       radius_m: radius_m.toString(),
+      original_query: originalQuery,  // Keep track of original
+      is_followup: 'true',  // Flag as follow-up
+      result_set_id: data?.result_set_id || '',  // Pass result set ID
     })
-
-    // Add conversation context
-    if (data?.result_set_id) {
-      params.append('result_set_id', data.result_set_id)
-      params.append('follow_up', 'true')
-    }
 
     setChatMessage('')
     router.push(`/results?${params.toString()}`)
+  }
+
+  // Handle quick refinement buttons
+  const handleQuickRefinement = (refinement: string) => {
+    setChatMessage(refinement)
+    setTimeout(() => {
+      if (refinement.trim()) {
+        const userMessage: Message = {
+          role: 'user',
+          content: refinement,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, userMessage])
+
+        const params = new URLSearchParams({
+          query: refinement,
+          lat: lat.toString(),
+          lng: lng.toString(),
+          radius_m: radius_m.toString(),
+          original_query: originalQuery,
+          is_followup: 'true',
+          result_set_id: data?.result_set_id || '',
+        })
+
+        setChatMessage('')
+        router.push(`/results?${params.toString()}`)
+      }
+    }, 100)
   }
 
   const sortedPlaces = data?.places ? [...data.places].sort((a, b) => {
@@ -161,7 +201,7 @@ function ResultsContent() {
             <div className="p-4 border-b flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Search Assistant</h3>
+                <h3 className="font-semibold">AI Assistant</h3>
               </div>
               <Button
                 variant="ghost"
@@ -175,6 +215,13 @@ function ResultsContent() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 && (
+                <div className="text-center text-muted-foreground text-sm py-8">
+                  <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Ask me to refine your search!</p>
+                  <p className="text-xs mt-1">I use AI to understand your requests 🤖</p>
+                </div>
+              )}
               {messages.map((message, index) => (
                 <div
                   key={index}
@@ -216,18 +263,19 @@ function ResultsContent() {
 
             {/* Suggested Refinements */}
             <div className="p-3 border-t bg-secondary/30">
-              <p className="text-xs text-muted-foreground mb-2">Quick refinements:</p>
+              <p className="text-xs text-muted-foreground mb-2">🤖 AI-powered refinements:</p>
               <div className="flex flex-wrap gap-1">
                 {[
                   'cheaper options',
-                  'within 1 mile',
+                  'within 2 km',
                   'with wifi',
-                  'open now',
-                  'top rated',
+                  'highly rated',
+                  'family friendly',
+                  'outdoor seating',
                 ].map((suggestion) => (
                   <button
                     key={suggestion}
-                    onClick={() => setChatMessage(suggestion)}
+                    onClick={() => handleQuickRefinement(suggestion)}
                     className="text-xs px-2 py-1 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
                   >
                     {suggestion}
@@ -240,7 +288,7 @@ function ResultsContent() {
             <div className="p-4 border-t">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Refine your search..."
+                  placeholder="Ask me anything..."
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
                   onKeyPress={(e) => {
@@ -254,6 +302,9 @@ function ResultsContent() {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                💡 Try: "cheaper", "within 3 miles", "with parking"
+              </p>
             </div>
           </Card>
         </div>
@@ -266,7 +317,8 @@ function ResultsContent() {
               <div>
                 <h2 className="text-2xl font-bold">Search Results</h2>
                 <p className="text-muted-foreground">
-                  Found {data?.places.length || 0} places
+                  Found {sortedPlaces.length} places
+                  {originalQuery && <span className="ml-1">for "{originalQuery}"</span>}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -304,9 +356,14 @@ function ResultsContent() {
                 <Badge variant="secondary">{data.debug.agent_mode}</Badge>
                 <Badge variant="secondary">{data.debug.ranking_preset}</Badge>
                 <Badge variant={data.debug.cache_hit ? 'default' : 'outline'}>
-                  {data.debug.cache_hit ? 'Cached' : 'Fresh'}
+                  {data.debug.cache_hit ? '🔥 Filtered' : 'Fresh'}
                 </Badge>
                 <Badge variant="outline">{data.debug.timings.total.toFixed(2)}s</Badge>
+                {data.debug.counts_before_after && (
+                  <Badge variant="outline">
+                    {data.debug.counts_before_after.original} → {data.debug.counts_before_after.filtered}
+                  </Badge>
+                )}
               </div>
             )}
 
@@ -352,7 +409,7 @@ function ResultsContent() {
           {sortedPlaces.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No places found matching your criteria.</p>
-              <Button className="mt-4" onClick={() => window.history.back()}>
+              <Button className="mt-4" onClick={() => router.push('/')}>
                 New Search
               </Button>
             </div>
