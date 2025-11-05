@@ -1,15 +1,21 @@
 'use client'
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-
 interface CategoryBreakdownProps {
   places: any[]
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
+const COLORS = [
+  { bg: 'bg-blue-500', text: 'text-blue-700', light: 'bg-blue-50' },
+  { bg: 'bg-green-500', text: 'text-green-700', light: 'bg-green-50' },
+  { bg: 'bg-orange-500', text: 'text-orange-700', light: 'bg-orange-50' },
+  { bg: 'bg-red-500', text: 'text-red-700', light: 'bg-red-50' },
+  { bg: 'bg-purple-500', text: 'text-purple-700', light: 'bg-purple-50' },
+  { bg: 'bg-pink-500', text: 'text-pink-700', light: 'bg-pink-50' },
+  { bg: 'bg-cyan-500', text: 'text-cyan-700', light: 'bg-cyan-50' },
+  { bg: 'bg-lime-500', text: 'text-lime-700', light: 'bg-lime-50' },
+]
 
 export function CategoryBreakdown({ places }: CategoryBreakdownProps) {
-  // Count by category
   const categoryCount: { [key: string]: number } = {}
   
   places.forEach(place => {
@@ -17,32 +23,55 @@ export function CategoryBreakdown({ places }: CategoryBreakdownProps) {
     categoryCount[category] = (categoryCount[category] || 0) + 1
   })
 
-  const pieData = Object.entries(categoryCount)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
+  const categories = Object.entries(categoryCount)
+    .map(([name, count]) => ({ 
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      count,
+      percentage: (count / places.length) * 100
+    }))
+    .sort((a, b) => b.count - a.count)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <h3 className="text-sm font-semibold">Category Breakdown</h3>
-      <ResponsiveContainer width="100%" height={250}>
-        <PieChart>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {pieData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
+      <p className="text-xs text-muted-foreground">
+        {places.length} places across {categories.length} categories
+      </p>
+
+      {/* Stacked Bar */}
+      <div className="h-8 flex rounded-lg overflow-hidden shadow-sm">
+        {categories.map((category, index) => (
+          <div
+            key={category.name}
+            className={`${COLORS[index % COLORS.length].bg} transition-all hover:opacity-80 cursor-pointer`}
+            style={{ width: `${category.percentage}%` }}
+            title={`${category.name}: ${category.count} (${category.percentage.toFixed(1)}%)`}
+          />
+        ))}
+      </div>
+
+      {/* Legend with bars */}
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {categories.map((category, index) => (
+          <div key={category.name} className="flex items-center justify-between hover:bg-secondary/50 p-2 rounded transition-colors">
+            <div className="flex items-center gap-2 flex-1">
+              <div className={`w-3 h-3 rounded-full ${COLORS[index % COLORS.length].bg}`} />
+              <span className="text-sm font-medium">{category.name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${COLORS[index % COLORS.length].bg} transition-all`}
+                  style={{ width: `${category.percentage}%` }}
+                />
+              </div>
+              <span className={`text-sm font-semibold w-20 text-right ${COLORS[index % COLORS.length].text}`}>
+                {category.count} ({category.percentage.toFixed(0)}%)
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

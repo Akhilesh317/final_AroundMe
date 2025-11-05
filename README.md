@@ -77,10 +77,12 @@ docker compose -f deploy/compose.yml up --build
 
 **API (Backend)**
 ```bash
+source apps/api/venv/bin/activate
 cd apps/api
 pip install -e ".[dev]"
 alembic upgrade head
-uvicorn app.main:app --reload
+cd ../..
+uvicorn app.main:app --reload --app-dir apps/api
 ```
 
 **Web (Frontend)**

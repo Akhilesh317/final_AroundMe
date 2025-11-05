@@ -60,9 +60,9 @@ class SearchContext(BaseModel):
     conversation_id: Optional[str] = None
     result_set_id: Optional[str] = None
     follow_up: bool = False
-    original_query: Optional[str] = None  # Add this line
     agent_mode: Optional[Literal["full", "deterministic"]] = None
     ranking_preset: Optional[Literal["balanced", "nearby", "review-heavy"]] = None
+
 
 class SearchRequest(BaseModel):
     """Search request"""

@@ -17,6 +17,7 @@ import { PriceDistribution } from '@/components/visualizations/PriceDistribution
 import { RatingDistribution } from '@/components/visualizations/RatingDistribution'
 import { DistanceVisualization } from '@/components/visualizations/DistanceVisualization'
 import { CategoryBreakdown } from '@/components/visualizations/CategoryBreakdown'
+import { ScoreBreakdown } from '@/components/visualizations/ScoreBreakdown'
 import { FeatureHeatmap } from '@/components/visualizations/FeatureHeatmap'
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
@@ -35,7 +36,7 @@ function ResultsContent() {
   const [chatMessage, setChatMessage] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [chatOpen, setChatOpen] = useState(true)
-  const [showViz, setShowViz] = useState(true)  // Add this state
+  const [showViz, setShowViz] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const query = searchParams.get('query') || ''
@@ -424,6 +425,7 @@ function ResultsContent() {
 
                   {/* Charts Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Row 1: Price & Rating */}
                     <Card>
                       <CardContent className="p-4">
                         <PriceDistribution places={sortedPlaces} />
@@ -436,6 +438,7 @@ function ResultsContent() {
                       </CardContent>
                     </Card>
 
+                    {/* Row 2: Category & Score */}
                     <Card>
                       <CardContent className="p-4">
                         <CategoryBreakdown places={sortedPlaces} />
@@ -444,13 +447,24 @@ function ResultsContent() {
 
                     <Card>
                       <CardContent className="p-4">
+                        <ScoreBreakdown places={sortedPlaces} />
+                      </CardContent>
+                    </Card>
+
+                    {/* Row 3: Distance Scatter */}
+                    <Card className="lg:col-span-2">
+                      <CardContent className="p-4">
                         <DistanceVisualization places={sortedPlaces} />
                       </CardContent>
                     </Card>
 
+                    {/* Row 4: Feature Heatmap */}
                     <Card className="lg:col-span-2">
                       <CardContent className="p-4">
-                        <FeatureHeatmap places={sortedPlaces} />
+                        <FeatureHeatmap 
+                          places={sortedPlaces} 
+                          featureAnalysis={data?.debug?.feature_analysis}
+                        />
                       </CardContent>
                     </Card>
                   </div>
@@ -497,3 +511,4 @@ export default function ResultsPage() {
     </Suspense>
   )
 }
+

@@ -1,281 +1,351 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useParams, useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  StarIcon,
-  MapPinIcon,
-  PhoneIcon,
-  ExternalLinkIcon,
-  DollarSignIcon,
+import { Badge } from '@/components/ui/badge'
+import { 
+  MapPin, 
+  Phone, 
+  ExternalLink, 
+  Star, 
+  DollarSign, 
+  Navigation,
+  Share2,
+  Heart,
+  Loader2,
+  ArrowLeft
 } from 'lucide-react'
-import { formatDistance, formatPrice, formatRating, getFeatureLabel } from '@/lib/utils'
 
-// Mock data for demonstration - in production, fetch from API
-const mockPlace = {
-  id: '1',
-  name: 'Blue Bottle Coffee',
-  category: 'cafe',
-  lat: 37.7749,
-  lng: -122.4194,
-  rating: 4.5,
-  user_rating_count: 1250,
-  price_level: 2,
-  phone: '+1 415-123-4567',
-  website: 'https://bluebottlecoffee.com',
-  maps_url: 'https://maps.google.com/?cid=12345',
-  address: '66 Mint St, San Francisco, CA 94103',
-  distance_km: 0.5,
-  features: {
-    feat_wifi: 1.0,
-    feat_outdoor_seating: 0.8,
-    feat_family_friendly: 0.6,
-  },
-  score: 0.85,
-  evidence: {
-    rating: 0.45,
-    reviews: 0.25,
-    distance: 0.14,
-    preferences: 0.01,
-  },
-  provenance: [
-    {
-      provider: 'google',
-      provider_id: 'ChIJN1t_tDeuEmsRUsoyG83frY4',
-      name: 'Blue Bottle Coffee',
-      name_similarity: 1.0,
-      geo_distance_m: 0.0,
-      rating: 4.5,
-      user_rating_count: 1250,
-    },
-  ],
-  matched_partners: [],
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+interface PlaceDetails {
+  id: string
+  name: string
+  category: string
+  rating: number
+  user_rating_count: number
+  price_level: number
+  distance_km: number
+  score: number
+  lat: number
+  lng: number
+  address?: string
+  phone?: string
+  website?: string
+  features?: { [key: string]: number }
+  evidence?: {
+    rating: number
+    reviews: number
+    distance: number
+    price_match: number
+    constraint_bonus: number
+  }
+  provenance?: Array<{
+    provider: string
+    provider_id: string
+    name: string
+  }>
 }
 
-export default function PlaceDetailPage() {
+async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
+  const response = await fetch(`${API_URL}/api/places/${placeId}`)
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch place details')
+  }
+  
+  return response.json()
+}
+
+export default function PlaceDetailsPage() {
   const params = useParams()
-  const place = mockPlace // In production: fetch based on params.id
+  const router = useRouter()
+  const placeId = params.id as string
+
+  const { data: place, isLoading, error } = useQuery({
+    queryKey: ['place', placeId],
+    queryFn: () => fetchPlaceDetails(placeId),
+    enabled: !!placeId
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error || !place) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded">
+          <p className="font-semibold">Error loading place details</p>
+          <p className="text-sm">{error?.toString() || 'Place not found'}</p>
+          <Button className="mt-4" onClick={() => router.back()}>
+            Go Back
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const getPriceSymbol = (level: number) => {
+    return '$'.repeat(level || 1)
+  }
+
+  const getFeaturePercentage = (value: number) => {
+    return Math.round(value * 100)
+  }
+
+  const topFeatures = place.features 
+    ? Object.entries(place.features)
+        .map(([key, value]) => ({
+          name: key.replace('feat_', '').replace(/_/g, ' '),
+          percentage: getFeaturePercentage(value as number)
+        }))
+        .filter(f => f.percentage > 30)
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 5)
+    : []
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">{place.name}</h1>
-          <p className="text-lg text-muted-foreground">{place.category}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="container mx-auto px-4 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Results
+          </Button>
 
-          <div className="flex flex-wrap items-center gap-4 mt-4">
-            {place.rating && (
-              <div className="flex items-center gap-2">
-                <StarIcon className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                <span className="text-lg font-semibold">
-                  {formatRating(place.rating)}
-                </span>
-                {place.user_rating_count && (
-                  <span className="text-sm text-muted-foreground">
-                    ({place.user_rating_count} reviews)
-                  </span>
-                )}
-              </div>
-            )}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{place.name}</h1>
+              <p className="text-muted-foreground capitalize mt-1">{place.category}</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon">
+                <Heart className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon">
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-            {place.price_level && (
-              <Badge variant="outline" className="text-base">
-                {formatPrice(place.price_level)}
-              </Badge>
-            )}
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-1">
+              <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              <span className="font-semibold">{place.rating?.toFixed(1) || 'N/A'}</span>
+              <span className="text-muted-foreground">
+                ({place.user_rating_count?.toLocaleString() || 0} reviews)
+              </span>
+            </div>
 
-            {place.distance_km !== undefined && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPinIcon className="h-5 w-5" />
-                <span>{formatDistance(place.distance_km)}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              <span className="font-semibold">{getPriceSymbol(place.price_level)}</span>
+            </div>
 
-            <Badge variant="secondary" className="text-sm">
-              Score: {place.score.toFixed(2)}
+            <div className="flex items-center gap-1">
+              <Navigation className="h-5 w-5 text-blue-600" />
+              <span className="font-semibold">{place.distance_km?.toFixed(1) || '?'}km</span>
+            </div>
+
+            <Badge variant="secondary" className="text-base px-3 py-1">
+              Score: {place.score?.toFixed(2) || 'N/A'}
             </Badge>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="md:col-span-2 space-y-6">
-            {/* Contact Info */}
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Main Info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Contact & Location */}
             <Card>
-              <CardHeader>
-                <CardTitle>Contact & Location</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {place.address && (
-                  <div className="flex items-start gap-3">
-                    <MapPinIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <p className="text-sm">{place.address}</p>
-                  </div>
-                )}
-
-                {place.phone && (
-                  <div className="flex items-center gap-3">
-                    <PhoneIcon className="h-5 w-5 text-muted-foreground" />
-                    <a href={`tel:${place.phone}`} className="text-sm hover:underline">
-                      {place.phone}
-                    </a>
-                  </div>
-                )}
-
-                {place.website && (
-                  <div className="flex items-center gap-3">
-                    <ExternalLinkIcon className="h-5 w-5 text-muted-foreground" />
-                    
-                      <a href={place.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm hover:underline"
-                    >
-                      Visit Website
-                    </a>
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-3">
-                  {place.maps_url && (
-                    <Button asChild className="flex-1">
-                      <a href={place.maps_url} target="_blank" rel="noopener noreferrer">
-                        Open in Maps
-                      </a>
-                    </Button>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4">Contact & Location</h2>
+                
+                <div className="space-y-3">
+                  {place.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <span>{place.address}</span>
+                    </div>
                   )}
+
                   {place.phone && (
-                    <Button asChild variant="outline">
-                      <a href={`tel:${place.phone}`}>Call</a>
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5 text-muted-foreground" />
+                      <a href={`tel:${place.phone}`} className="hover:underline">
+                        {place.phone}
+                      </a>
+                    </div>
+                  )}
+
+                  {place.website && (
+                    <div className="flex items-center gap-3">
+                      <ExternalLink className="h-5 w-5 text-muted-foreground" />
+                      <a 
+                        href={place.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="hover:underline text-blue-600"
+                      >
+                        Visit Website
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button 
+                    className="flex-1"
+                    onClick={() => window.open(
+                      `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`,
+                      '_blank'
+                    )}
+                  >
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Open in Maps
+                  </Button>
+                  {place.phone && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => window.location.href = `tel:${place.phone}`}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call
                     </Button>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Features */}
-            {Object.keys(place.features).length > 0 && (
+            {/* Features & Amenities */}
+            {topFeatures.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Features & Amenities</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Features & Amenities</h2>
+                  
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(place.features)
-                      .filter(([_, value]) => value > 0.5)
-                      .map(([key, value]) => (
-                        <Badge key={key} variant="secondary">
-                          {getFeatureLabel(key)}
-                          <span className="ml-1 text-xs opacity-70">
-                            ({Math.round(value * 100)}%)
-                          </span>
-                        </Badge>
-                      ))}
+                    {topFeatures.map((feature) => (
+                      <Badge 
+                        key={feature.name} 
+                        variant="secondary"
+                        className="capitalize text-sm px-3 py-1"
+                      >
+                        {feature.name} ({feature.percentage}%)
+                      </Badge>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Provenance */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Data Sources</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {place.provenance.map((prov, index) => (
-                    <div key={index} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge variant="outline" className="capitalize">
-                          {prov.provider}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {(prov.name_similarity * 100).toFixed(0)}% match
-                        </span>
+            {/* Data Sources */}
+            {place.provenance && place.provenance.length > 0 && (
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Data Sources</h2>
+                  
+                  <div className="space-y-2">
+                    {place.provenance.map((source, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium capitalize">{source.provider}</p>
+                          <p className="text-sm text-muted-foreground">{source.name}</p>
+                        </div>
+                        <Badge variant="outline">{source.provider}</Badge>
                       </div>
-                      <div className="space-y-1 text-sm">
-                        <p>
-                          <span className="text-muted-foreground">Name:</span> {prov.name}
-                        </p>
-                        {prov.rating && (
-                          <p>
-                            <span className="text-muted-foreground">Rating:</span>{' '}
-                            {formatRating(prov.rating)}
-                            {prov.user_rating_count && ` (${prov.user_rating_count})`}
-                          </p>
-                        )}
-                        <p>
-                          <span className="text-muted-foreground">Distance:</span>{' '}
-                          {prov.geo_distance_m.toFixed(0)}m
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Sidebar */}
+          {/* Right Column - Score & Actions */}
           <div className="space-y-6">
             {/* Score Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Score Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(place.evidence).map(([key, value]) => (
-                    <div key={key}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm capitalize">
-                          {key.replace(/_/g, ' ')}
-                        </span>
-                        <span className="text-sm font-mono">
-                          {value >= 0 ? '+' : ''}
-                          {value.toFixed(3)}
+            {place.evidence && (
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Score Breakdown</h2>
+                  
+                  <div className="space-y-3">
+                    {Object.entries(place.evidence).map(([key, value]) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm capitalize">
+                            {key.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-sm font-semibold">
+                            +{value.toFixed(3)}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary"
+                            style={{ width: `${(value / 0.45) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="pt-3 border-t mt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Total Score</span>
+                        <span className="text-xl font-bold">
+                          {place.score?.toFixed(3) || 'N/A'}
                         </span>
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${Math.abs(value) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">Total Score</span>
-                      <span className="font-mono font-semibold">
-                        {place.score.toFixed(3)}
-                      </span>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Actions */}
             <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  Share Place
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Save to Favorites
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Report Issue
-                </Button>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+                
+                <div className="space-y-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href)
+                      alert('Link copied to clipboard!')
+                    }}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share Place
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    Save to Favorites
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
