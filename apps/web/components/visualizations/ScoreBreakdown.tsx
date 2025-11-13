@@ -24,20 +24,30 @@ export function ScoreBreakdown({ places }: ScoreBreakdownProps) {
 
   // Convert to percentage for radial chart
   const radialData = scoreRanges
-    .filter(r => r.count > 0) // Only show ranges with data
+    .filter(r => r.count > 0)
     .map(range => ({
       ...range,
       percentage: (range.count / places.length) * 100,
       value: range.count
     }))
-    .reverse() // Display from inside to outside (worst to best)
+    .reverse()
 
   // Calculate stats
   const avgScore = places.reduce((sum, p) => sum + (p.score || 0), 0) / places.length
   const topScorePlaces = places.filter(p => p.score >= 0.8).length
 
+  // If no data, show simplified view
+  if (radialData.length === 0) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold">Match Score Distribution</h3>
+        <p className="text-xs text-muted-foreground">No score data available</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">Match Score Distribution</h3>
@@ -49,65 +59,43 @@ export function ScoreBreakdown({ places }: ScoreBreakdownProps) {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
-        <RadialBarChart 
-          cx="50%" 
-          cy="50%" 
-          innerRadius="20%" 
-          outerRadius="90%" 
-          data={radialData}
-          startAngle={90}
-          endAngle={-270}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-          <RadialBar
-            background
-            dataKey="percentage"
-            cornerRadius={10}
-            label={{ 
-              position: 'insideStart', 
-              fill: '#fff', 
-              fontSize: 11,
-              fontWeight: 'bold',
-              formatter: (value: number) => `${value.toFixed(0)}%`
-            }}
-          />
-          <Legend 
-            iconSize={12}
-            layout="vertical"
-            verticalAlign="middle"
-            align="right"
-            wrapperStyle={{ paddingLeft: '10px' }}
-            formatter={(value, entry: any) => (
-              <span className="text-xs">
-                {entry.payload.displayName}
-                <span className="font-semibold ml-1">({entry.payload.value})</span>
-              </span>
-            )}
-          />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: 'white', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '8px',
-              padding: '8px 12px'
-            }}
-            formatter={(value: any, name: string, props: any) => [
-              `${props.payload.count} places (${value.toFixed(1)}%)`,
-              props.payload.displayName
-            ]}
-          />
-        </RadialBarChart>
-      </ResponsiveContainer>
+      {/* Simplified Bar Chart Instead of Radial */}
+      <div className="space-y-2">
+        {scoreRanges
+          .filter(r => r.count > 0)
+          .sort((a, b) => b.min - a.min)
+          .map((range) => {
+            const percentage = (range.count / places.length) * 100
+            return (
+              <div key={range.name} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">{range.displayName}</span>
+                  <span className="font-semibold" style={{ color: range.fill }}>
+                    {range.count} ({percentage.toFixed(0)}%)
+                  </span>
+                </div>
+                <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-all"
+                    style={{ 
+                      width: `${percentage}%`,
+                      backgroundColor: range.fill
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+      </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-        <div className="text-center p-2 bg-green-50 rounded">
-          <div className="text-lg font-bold text-green-600">{topScorePlaces}</div>
+      <div className="grid grid-cols-2 gap-2 pt-3 border-t">
+        <div className="text-center p-3 bg-green-50 rounded-lg">
+          <div className="text-2xl font-bold text-green-600">{topScorePlaces}</div>
           <div className="text-xs text-green-700">Excellent Matches</div>
         </div>
-        <div className="text-center p-2 bg-blue-50 rounded">
-          <div className="text-lg font-bold text-blue-600">
+        <div className="text-center p-3 bg-blue-50 rounded-lg">
+          <div className="text-2xl font-bold text-blue-600">
             {((topScorePlaces / places.length) * 100).toFixed(0)}%
           </div>
           <div className="text-xs text-blue-700">Success Rate</div>

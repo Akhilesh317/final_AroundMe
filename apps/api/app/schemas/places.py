@@ -4,6 +4,14 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
+class RequirementMatch(BaseModel):
+    """Track how well a place matches user requirements"""
+    requirement: str  # e.g., "wifi", "outdoor_seating"
+    matched: bool
+    score_bonus: float  # Points awarded
+    evidence: Optional[str] = None  # Where we found it
+
+
 
 class ProviderPlace(BaseModel):
     """Normalized place from a provider"""
@@ -88,7 +96,11 @@ class Place(BaseModel):
     distance_km: Optional[float] = Field(None, ge=0)
     features: Dict[str, float] = Field(default_factory=dict)
     score: float = 0.0
+    max_possible_score: float = 100.0  # ✅ NEW: Show max possible
     evidence: Dict[str, float] = Field(default_factory=dict)
+    user_requirements: List[str] = []  # What user asked for
+    requirements_matched: List[RequirementMatch] = []  # How we did
+    match_percentage: float = 0.0  # % of requirements met
     provenance: List[Dict[str, Any]] = Field(default_factory=list)
     matched_partners: List[MatchedPartner] = Field(default_factory=list)
     

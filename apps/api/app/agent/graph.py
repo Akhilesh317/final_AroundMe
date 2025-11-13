@@ -14,8 +14,6 @@ from app.agent.nodes import (
 )
 from app.agent.tools import SearchTool
 from app.config import settings
-from app.providers.google import GooglePlacesProvider
-from app.providers.yelp import YelpProvider
 from app.schemas.places import Place
 from app.schemas.search import SearchDebug
 from app.utils.logging import get_logger
@@ -27,15 +25,8 @@ class DiscoveryAgent:
     """Agent for local discovery"""
     
     def __init__(self):
-        self.google_provider = GooglePlacesProvider(
-            api_key=settings.google_places_api_key,
-            timeout=settings.google_timeout,
-        )
-        self.yelp_provider = YelpProvider(
-            api_key=settings.yelp_api_key,
-            timeout=settings.yelp_timeout,
-        )
-        self.search_tool = SearchTool(self.google_provider, self.yelp_provider)
+        # ✅ SearchTool no longer needs provider instances
+        self.search_tool = SearchTool()
     
     async def run(
         self,
@@ -148,5 +139,5 @@ class DiscoveryAgent:
     
     async def close(self):
         """Close provider connections"""
-        await self.google_provider.close()
-        await self.yelp_provider.close()
+        # ✅ No longer needed since we're using httpx.AsyncClient context managers
+        pass

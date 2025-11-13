@@ -60,9 +60,9 @@ class SearchContext(BaseModel):
     conversation_id: Optional[str] = None
     result_set_id: Optional[str] = None
     follow_up: bool = False
+    original_query: Optional[str] = None  # Add this line
     agent_mode: Optional[Literal["full", "deterministic"]] = None
     ranking_preset: Optional[Literal["balanced", "nearby", "review-heavy"]] = None
-
 
 class SearchRequest(BaseModel):
     """Search request"""
@@ -99,6 +99,7 @@ class SearchDebug(BaseModel):
     ranking_preset: str = "balanced"
     constraints_satisfied: Dict[str, Any] = Field(default_factory=dict)
     agent_mode: str = "full"
+    feature_analysis: Optional[Dict[str, Any]] = None
 
 
 class SearchResponse(BaseModel):

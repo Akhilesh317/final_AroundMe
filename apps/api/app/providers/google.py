@@ -1,229 +1,262 @@
 """Google Places API v1 provider"""
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider
 from app.schemas.places import ProviderPlace
-from app.utils.field_masks import GOOGLE_PLACES_FIELD_MASK
-from app.utils.geo import calculate_distance_km
+from app.utils.geo import calculate_distance_m
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+GOOGLE_PLACES_BASE = "https://places.googleapis.com/v1"
 
-class GooglePlacesProvider(BaseProvider):
-    """Google Places API v1 provider"""
+
+async def search_google_places(
+    lat: float,
+    lng: float,
+    radius_m: int = 3000,
+    query: Optional[str] = None,
+    category: Optional[str] = None,
+    max_results: int = 20,
+) -> List[ProviderPlace]:
+    """Search Google Places API v1"""
     
-    BASE_URL = "https://places.googleapis.com/v1"
+    if not settings.google_places_api_key:
+        logger.error("google_api_key_missing")
+        return []
     
-    @property
-    def name(self) -> str:
-        return "google"
+    try:
+        async with httpx.AsyncClient() as client:
+            # Determine search type
+            if query:
+                # Text search
+                response = await _text_search(client, lat, lng, query, radius_m, max_results)
+            else:
+                # Nearby search
+                response = await _nearby_search(client, lat, lng, category, radius_m, max_results)
+            
+            places = []
+            for place_data in response.get("places", []):
+                try:
+                    converted = _convert_place(place_data, lat, lng)
+                    places.append(converted)
+                except Exception as e:
+                    logger.warning("place_conversion_failed", error=str(e))
+                    continue
+            
+            logger.info("google_search_complete", count=len(places), query=query)
+            return places
+            
+    except Exception as e:
+        logger.error("google_search_failed", error=str(e))
+        return []
+
+
+async def _text_search(
+    client: httpx.AsyncClient,
+    lat: float,
+    lng: float,
+    query: str,
+    radius_m: int,
+    max_results: int,
+) -> Dict:
+    """Text search endpoint"""
     
-    def _build_headers(self) -> Dict[str, str]:
-        """Build request headers"""
-        return {
-            "X-Goog-Api-Key": self.api_key,
-            "X-Goog-FieldMask": GOOGLE_PLACES_FIELD_MASK,
-            "Content-Type": "application/json",
-        }
+    url = f"{GOOGLE_PLACES_BASE}/places:searchText"
     
-    async def search_nearby(
-        self,
-        lat: float,
-        lng: float,
-        radius_m: int,
-        query: Optional[str] = None,
-        category: Optional[str] = None,
-        max_results: int = 60,
-    ) -> List[ProviderPlace]:
-        """Search places nearby"""
-        if query:
-            return await self._search_text(lat, lng, radius_m, query, max_results)
-        else:
-            return await self._search_nearby_circle(lat, lng, radius_m, category, max_results)
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.google_places_api_key,
+        "X-Goog-FieldMask": (
+            "places.id,places.displayName,places.formattedAddress,"
+            "places.location,places.rating,places.userRatingCount,"
+            "places.priceLevel,places.primaryType,places.types,"
+            "places.nationalPhoneNumber,places.websiteUri,places.googleMapsUri,"
+            "places.editorialSummary,"
+            "places.goodForChildren,places.goodForGroups,"
+            "places.outdoorSeating,places.reservable,"
+            "places.allowsDogs,places.servesBeer,places.servesBreakfast,"
+            "places.servesBrunch,places.servesDinner,places.servesLunch,"
+            "places.servesVegetarianFood,places.servesWine,"
+            "places.takeout,places.delivery,places.dineIn,"
+            "places.accessibilityOptions,places.parkingOptions,"
+            "places.paymentOptions,places.currentOpeningHours"
+        ),
+    }
     
-    async def _search_nearby_circle(
-        self,
-        lat: float,
-        lng: float,
-        radius_m: int,
-        category: Optional[str] = None,
-        max_results: int = 60,
-    ) -> List[ProviderPlace]:
-        """Search using searchNearby endpoint"""
-        url = f"{self.BASE_URL}/places:searchNearby"
-        
-        payload = {
-            "locationRestriction": {
-                "circle": {
-                    "center": {"latitude": lat, "longitude": lng},
-                    "radius": min(radius_m, 50000),  # Max 50km
-                }
-            },
-            "maxResultCount": min(max_results, 20),  # API limit per request
-        }
-        
-        if category:
-            payload["includedTypes"] = [category]
-        
-        places = []
-        page_token = None
-        
-        while len(places) < max_results:
-            if page_token:
-                payload["pageToken"] = page_token
-                await asyncio.sleep(2)  # Respect rate limits
-            
-            response = await self._request_with_retry(
-                "POST",
-                url,
-                headers=self._build_headers(),
-                json=payload,
-            )
-            
-            data = response.json()
-            
-            if "places" in data:
-                for place_data in data["places"]:
-                    place = self._normalize_place(place_data, lat, lng)
-                    if place:
-                        places.append(place)
-            
-            page_token = data.get("nextPageToken")
-            if not page_token or len(places) >= max_results:
-                break
-        
-        logger.info(
-            "google_search_nearby",
-            lat=lat,
-            lng=lng,
-            radius_m=radius_m,
-            category=category,
-            count=len(places),
-        )
-        
-        return places[:max_results]
-    
-    async def _search_text(
-        self,
-        lat: float,
-        lng: float,
-        radius_m: int,
-        query: str,
-        max_results: int = 60,
-    ) -> List[ProviderPlace]:
-        """Search using searchText endpoint"""
-        url = f"{self.BASE_URL}/places:searchText"
-        
-        payload = {
-            "textQuery": query,
-            "locationBias": {
-                "circle": {
-                    "center": {"latitude": lat, "longitude": lng},
-                    "radius": min(radius_m, 50000),
-                }
-            },
-            "maxResultCount": min(max_results, 20),
-        }
-        
-        places = []
-        page_token = None
-        
-        while len(places) < max_results:
-            if page_token:
-                payload["pageToken"] = page_token
-                await asyncio.sleep(2)
-            
-            response = await self._request_with_retry(
-                "POST",
-                url,
-                headers=self._build_headers(),
-                json=payload,
-            )
-            
-            data = response.json()
-            
-            if "places" in data:
-                for place_data in data["places"]:
-                    place = self._normalize_place(place_data, lat, lng)
-                    if place:
-                        places.append(place)
-            
-            page_token = data.get("nextPageToken")
-            if not page_token or len(places) >= max_results:
-                break
-        
-        logger.info(
-            "google_search_text",
-            lat=lat,
-            lng=lng,
-            radius_m=radius_m,
-            query=query,
-            count=len(places),
-        )
-        
-        return places[:max_results]
-    
-    def _normalize_place(
-        self,
-        data: Dict[str, Any],
-        origin_lat: float,
-        origin_lng: float,
-    ) -> Optional[ProviderPlace]:
-        """Normalize Google place data to ProviderPlace"""
-        try:
-            location = data.get("location", {})
-            lat = location.get("latitude")
-            lng = location.get("longitude")
-            
-            if lat is None or lng is None:
-                return None
-            
-            # Extract display name
-            display_name = data.get("displayName", {})
-            name = display_name.get("text", "") if isinstance(display_name, dict) else str(display_name)
-            
-            if not name:
-                return None
-            
-            # Calculate distance
-            distance_km = calculate_distance_km(origin_lat, origin_lng, lat, lng)
-            
-            # Extract types
-            types = data.get("types", [])
-            primary_type = data.get("primaryType")
-            
-            # Map price level (PRICE_LEVEL_UNSPECIFIED=0, FREE=1, INEXPENSIVE=2, MODERATE=3, EXPENSIVE=4, VERY_EXPENSIVE=5)
-            price_level_str = data.get("priceLevel", "")
-            price_map = {
-                "PRICE_LEVEL_FREE": 0,
-                "PRICE_LEVEL_INEXPENSIVE": 1,
-                "PRICE_LEVEL_MODERATE": 2,
-                "PRICE_LEVEL_EXPENSIVE": 3,
-                "PRICE_LEVEL_VERY_EXPENSIVE": 4,
+    body = {
+        "textQuery": query,
+        "locationBias": {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": float(radius_m),
             }
-            price_level = price_map.get(price_level_str)
-            
-            return ProviderPlace(
-                provider="google",
-                provider_id=data.get("id", ""),
-                name=name,
-                category=primary_type,
-                lat=lat,
-                lng=lng,
-                rating=data.get("rating"),
-                user_rating_count=data.get("userRatingCount"),
-                price_level=price_level,
-                phone=data.get("internationalPhoneNumber"),
-                website=data.get("websiteUri"),
-                maps_url=data.get("googleMapsUri"),
-                address=data.get("formattedAddress"),
-                distance_km=distance_km,
-                types=types,
-                raw=data,
-            )
-        except Exception as e:
-            logger.error("google_normalize_error", error=str(e), data=data)
-            return None
+        },
+        "maxResultCount": max_results,
+    }
+    
+    response = await client.post(url, json=body, headers=headers, timeout=10.0)
+    response.raise_for_status()
+    
+    return response.json()
+
+
+async def _nearby_search(
+    client: httpx.AsyncClient,
+    lat: float,
+    lng: float,
+    category: Optional[str],
+    radius_m: int,
+    max_results: int,
+) -> Dict:
+    """Nearby search endpoint"""
+    
+    url = f"{GOOGLE_PLACES_BASE}/places:searchNearby"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.google_places_api_key,
+        "X-Goog-FieldMask": (
+            "places.id,places.displayName,places.formattedAddress,"
+            "places.location,places.rating,places.userRatingCount,"
+            "places.priceLevel,places.primaryType,places.types,"
+            "places.nationalPhoneNumber,places.websiteUri,places.googleMapsUri,"
+            "places.editorialSummary,"
+            "places.goodForChildren,places.goodForGroups,"
+            "places.outdoorSeating,places.reservable,"
+            "places.allowsDogs,places.servesBeer,places.servesBreakfast,"
+            "places.servesBrunch,places.servesDinner,places.servesLunch,"
+            "places.servesVegetarianFood,places.servesWine,"
+            "places.takeout,places.delivery,places.dineIn,"
+            "places.accessibilityOptions,places.parkingOptions,"
+            "places.paymentOptions,places.currentOpeningHours"
+        ),
+    }
+    
+    body = {
+        "locationRestriction": {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": float(radius_m),
+            }
+        },
+        "maxResultCount": max_results,
+    }
+    
+    if category:
+        body["includedTypes"] = [category]
+    
+    response = await client.post(url, json=body, headers=headers, timeout=10.0)
+    response.raise_for_status()
+    
+    return response.json()
+
+
+def _convert_place(place_data: Dict, user_lat: float, user_lng: float) -> ProviderPlace:
+    """Convert Google Place to ProviderPlace with enhanced amenity data"""
+    
+    # Basic fields
+    place_id = place_data.get("id", "")
+    name = place_data.get("displayName", {}).get("text", "Unknown")
+    
+    # Location
+    location = place_data.get("location", {})
+    lat = location.get("latitude", 0.0)
+    lng = location.get("longitude", 0.0)
+    
+    # Calculate distance
+    distance_m = calculate_distance_m(user_lat, user_lng, lat, lng)
+    distance_km = distance_m / 1000.0
+    
+    # Rating
+    rating = place_data.get("rating")
+    user_rating_count = place_data.get("userRatingCount")
+    
+    # Price level (convert string to int)
+    price_level_str = place_data.get("priceLevel", "")
+    price_level = None
+    if price_level_str:
+        price_map = {
+            "PRICE_LEVEL_FREE": 0,
+            "PRICE_LEVEL_INEXPENSIVE": 1,
+            "PRICE_LEVEL_MODERATE": 2,
+            "PRICE_LEVEL_EXPENSIVE": 3,
+            "PRICE_LEVEL_VERY_EXPENSIVE": 4,
+        }
+        price_level = price_map.get(price_level_str)
+    
+    # Category
+    primary_type = place_data.get("primaryType", "")
+    category = primary_type.replace("_", " ").title() if primary_type else None
+    
+    # Contact info
+    phone = place_data.get("nationalPhoneNumber")
+    website = place_data.get("websiteUri")
+    maps_url = place_data.get("googleMapsUri")
+    formatted_address = place_data.get("formattedAddress", "")
+    
+    # ✅ ENHANCED: Extract all amenity data
+    enhanced_raw = {
+        **place_data,
+        
+        # Editorial summary (descriptions)
+        "editorial_summary": place_data.get("editorialSummary", {}).get("text", ""),
+        
+        # Types (categories)
+        "types": place_data.get("types", []),
+        
+        # ✅ CRITICAL: Boolean amenities from Google
+        "outdoor_seating": place_data.get("outdoorSeating", False),
+        "good_for_children": place_data.get("goodForChildren", False),
+        "good_for_groups": place_data.get("goodForGroups", False),
+        "allows_dogs": place_data.get("allowsDogs", False),
+        "reservable": place_data.get("reservable", False),
+        
+        # Food/drink service
+        "serves_beer": place_data.get("servesBeer", False),
+        "serves_breakfast": place_data.get("servesBreakfast", False),
+        "serves_brunch": place_data.get("servesBrunch", False),
+        "serves_dinner": place_data.get("servesDinner", False),
+        "serves_lunch": place_data.get("servesLunch", False),
+        "serves_vegetarian_food": place_data.get("servesVegetarianFood", False),
+        "serves_wine": place_data.get("servesWine", False),
+        
+        # Service options
+        "takeout": place_data.get("takeout", False),
+        "delivery": place_data.get("delivery", False),
+        "dine_in": place_data.get("dineIn", False),
+        
+        # Accessibility
+        "wheelchair_accessible": place_data.get("accessibilityOptions", {}).get("wheelchairAccessibleEntrance", False),
+        
+        # Parking
+        "parking_options": place_data.get("parkingOptions", {}),
+        
+        # Payment
+        "payment_options": place_data.get("paymentOptions", {}),
+        
+        # Hours
+        "opening_hours": place_data.get("currentOpeningHours", {}),
+    }
+    
+    return ProviderPlace(
+        provider="google",
+        provider_id=place_id,
+        name=name,
+        category=category,
+        lat=lat,
+        lng=lng,
+        rating=rating,
+        user_rating_count=user_rating_count,
+        price_level=price_level,
+        phone=phone,
+        website=website,
+        maps_url=maps_url,
+        address=formatted_address,
+        distance_km=distance_km,
+        types=place_data.get("types", []),
+        raw=enhanced_raw,
+    )

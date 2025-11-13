@@ -29,6 +29,7 @@ setup(
         "haversine>=2.8.1",
         "python-dotenv>=1.0.0",
         "python-multipart>=0.0.6",
+        "numpy>=1.24.0",  # ✅ NEW: For semantic matching embeddings
     ],
     extras_require={
         "dev": [

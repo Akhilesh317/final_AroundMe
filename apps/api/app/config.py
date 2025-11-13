@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     # Follow-ups
     conversation_ttl_seconds: int = 900  # 15 minutes
     max_followup_expansion_radius_m: int = 5000
+    
+    # ✅ NEW: Feature Matching Settings
+    enable_semantic_matching: bool = True
+    semantic_match_threshold: float = 0.75
+    embedding_cache_ttl: int = 3600  # 1 hour
+    max_semantic_searches_per_request: int = 50  # Limit to control OpenAI costs
 
 
 settings = Settings()

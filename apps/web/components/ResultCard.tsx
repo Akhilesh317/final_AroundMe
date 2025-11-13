@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'  // ✅ Add this import
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +11,7 @@ interface ResultCardProps {
 }
 
 export function ResultCard({ place }: ResultCardProps) {
-  const router = useRouter()  // ✅ Add this line
+  const router = useRouter()
 
   const getPriceSymbol = (level: number) => {
     if (!level) return 'N/A'
@@ -97,7 +97,7 @@ export function ResultCard({ place }: ResultCardProps) {
             variant="default" 
             size="sm" 
             className="flex-1"
-            onClick={() => router.push(`/place/${place.id}`)}  // ✅ Now works
+            onClick={() => router.push(`/place/${place.id}`)}
           >
             View Details
           </Button>
@@ -126,33 +126,91 @@ export function ResultCard({ place }: ResultCardProps) {
           )}
         </div>
 
-        {/* Evidence Breakdown (Optional) */}
+        {/* ✅ NEW: AI-Powered Requirement Matching */}
+        {place.user_requirements && place.user_requirements.length > 0 && (
+          <div className="mt-4 pt-4 border-t bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-700">Your Requirements:</p>
+              <Badge 
+                variant={place.match_percentage === 100 ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {place.match_percentage?.toFixed(0)}% Match
+              </Badge>
+            </div>
+            
+            <div className="space-y-2">
+              {place.requirements_matched?.map((req: any, idx: number) => (
+                <div 
+                  key={idx} 
+                  className={`flex items-center justify-between text-xs p-2 rounded ${
+                    req.matched 
+                      ? 'bg-green-100 border border-green-300' 
+                      : 'bg-gray-100 border border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {req.matched ? (
+                      <span className="text-green-600 font-bold text-sm">✓</span>
+                    ) : (
+                      <span className="text-gray-400 font-bold text-sm">✗</span>
+                    )}
+                    <div>
+                      <span className={`font-medium ${req.matched ? 'text-green-900' : 'text-gray-600'}`}>
+                        {req.requirement}
+                      </span>
+                      {req.evidence && (
+                        <div className="text-xs text-green-700 mt-0.5">
+                          {req.evidence}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`font-bold ${req.matched ? 'text-green-700' : 'text-gray-500'}`}>
+                    {req.matched ? `+${req.score_bonus.toFixed(0)}` : '0'} pts
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-purple-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-700">Total Score:</span>
+                <span className="text-lg font-bold text-purple-700">
+                  {place.score?.toFixed(0)}<span className="text-sm text-gray-500">/{place.max_possible_score?.toFixed(0)}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Base Score Evidence - Simplified */}
         {place.evidence && (
           <div className="mt-4 pt-4 border-t">
-            <p className="text-xs font-semibold mb-2">Score Evidence:</p>
+            <p className="text-xs font-semibold mb-2 text-muted-foreground">Base Score Breakdown:</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              {place.evidence.rating && (
+              {place.evidence.rating !== undefined && (
                 <div>
                   <span className="text-muted-foreground">Rating:</span>
-                  <span className="ml-1 font-medium">+{place.evidence.rating.toFixed(3)}</span>
+                  <span className="ml-1 font-medium">+{place.evidence.rating.toFixed(1)}</span>
                 </div>
               )}
-              {place.evidence.reviews && (
+              {place.evidence.reviews !== undefined && (
                 <div>
                   <span className="text-muted-foreground">Reviews:</span>
-                  <span className="ml-1 font-medium">+{place.evidence.reviews.toFixed(3)}</span>
+                  <span className="ml-1 font-medium">+{place.evidence.reviews.toFixed(1)}</span>
                 </div>
               )}
-              {place.evidence.distance && (
+              {place.evidence.distance !== undefined && (
                 <div>
                   <span className="text-muted-foreground">Distance:</span>
-                  <span className="ml-1 font-medium">+{place.evidence.distance.toFixed(3)}</span>
+                  <span className="ml-1 font-medium">+{place.evidence.distance.toFixed(1)}</span>
                 </div>
               )}
-              {place.evidence.price_match !== undefined && (
+              {place.evidence.price_fit !== undefined && (
                 <div>
                   <span className="text-muted-foreground">Price:</span>
-                  <span className="ml-1 font-medium">+{place.evidence.price_match.toFixed(3)}</span>
+                  <span className="ml-1 font-medium">+{place.evidence.price_fit.toFixed(1)}</span>
                 </div>
               )}
             </div>

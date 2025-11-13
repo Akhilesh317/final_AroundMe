@@ -44,3 +44,5 @@ ruff>=0.1.14
 black>=24.1.0
 isort>=5.13.2
 pre-commit>=3.6.0
+numpy>=1.24.0
+pandas>=2.0.0
