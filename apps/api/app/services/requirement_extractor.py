@@ -7,11 +7,21 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-REQUIREMENT_EXTRACTION_PROMPT = """You are a search query analyzer for restaurant and venue searches. Extract user requirements.
+REQUIREMENT_EXTRACTION_PROMPT = """You are a search query analyzer for restaurant and venue searches. Extract ONLY explicit user requirements for amenities, features, or qualities.
 
-Identify:
-1. **Features** - Physical amenities (wifi, parking, outdoor seating, etc.)
-2. **Qualities** - Subjective attributes (authentic, cozy, romantic, etc.)
+IMPORTANT RULES:
+1. DO NOT extract distance/location terms as requirements (nearby, close, walking distance, etc.)
+2. ONLY extract explicit amenities or qualities the user is asking for
+3. Distance/proximity should NOT be treated as a requirement - it's handled separately
+
+Extract:
+- **Features**: Physical amenities (wifi, parking, outdoor seating, playground, etc.)
+- **Qualities**: Subjective attributes (authentic, cozy, romantic, spicy, etc.)
+
+DO NOT EXTRACT:
+- Distance/location terms: "nearby", "close", "walking distance", "close by"
+- Basic search terms: "restaurant", "cafe", "place"
+- Time-based terms: "open now", "24 hours"
 
 Return JSON with normalized requirements:
 {
@@ -26,6 +36,20 @@ Return JSON with normalized requirements:
 }
 
 Examples:
+
+Query: "family friendly restaurant nearby"
+{
+  "normalized_requirements": [
+    {"requirement": "Family Friendly", "category": "feature", "keywords": ["family", "kids", "children", "family friendly"], "importance": "high"}
+  ]
+}
+NOTE: "nearby" is NOT extracted - it's a distance preference, not a requirement.
+
+Query: "restaurant close by"
+{
+  "normalized_requirements": []
+}
+NOTE: "close by" is distance, not a requirement.
 
 Query: "coffee shop with wifi"
 {
@@ -74,6 +98,20 @@ Query: "vegan restaurant with good parking"
   ]
 }
 
+Query: "restaurant open now"
+{
+  "normalized_requirements": []
+}
+NOTE: "open now" is a filter, not a requirement for scoring.
+
+Query: "best pizza nearby with delivery"
+{
+  "normalized_requirements": [
+    {"requirement": "Delivery", "category": "feature", "keywords": ["delivery", "delivers"], "importance": "high"}
+  ]
+}
+NOTE: "nearby" ignored, "best" ignored (handled by ranking), only "delivery" extracted.
+
 Now analyze:"""
 
 
@@ -84,8 +122,21 @@ async def extract_requirements(query: str) -> Dict:
         return {"normalized_requirements": []}
     
     # Skip if query is too generic
-    generic_terms = ["restaurant", "food", "cafe", "bar", "place"]
+    generic_terms = ["restaurant", "food", "cafe", "bar", "place", "nearby", "close by"]
     if query.lower().strip() in generic_terms:
+        return {"normalized_requirements": []}
+    
+    # Skip if query only contains distance/location terms
+    distance_only_patterns = [
+        "restaurant nearby",
+        "restaurant close by",
+        "restaurant near me",
+        "places nearby",
+        "food near me",
+        "restaurants around here",
+    ]
+    query_normalized = query.lower().strip()
+    if query_normalized in distance_only_patterns:
         return {"normalized_requirements": []}
     
     try:
@@ -107,6 +158,22 @@ async def extract_requirements(query: str) -> Dict:
         # Ensure normalized_requirements exists
         if "normalized_requirements" not in result:
             result["normalized_requirements"] = []
+        
+        # ✅ Filter out any distance-related requirements that slipped through
+        distance_keywords = ["nearby", "close", "walking", "distance", "proximity", "near"]
+        filtered_requirements = []
+        
+        for req in result["normalized_requirements"]:
+            req_name_lower = req.get("requirement", "").lower()
+            
+            # Skip if requirement name contains distance keywords
+            if any(keyword in req_name_lower for keyword in distance_keywords):
+                logger.info("filtered_distance_requirement", requirement=req.get("requirement"))
+                continue
+            
+            filtered_requirements.append(req)
+        
+        result["normalized_requirements"] = filtered_requirements
         
         logger.info("requirements_extracted", 
                    query=query,

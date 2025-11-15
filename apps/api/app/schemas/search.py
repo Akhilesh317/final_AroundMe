@@ -108,6 +108,7 @@ class SearchResponse(BaseModel):
     places: List[Place]
     debug: SearchDebug
     result_set_id: str
+    conversational_response: Optional[str] = None
     
     class Config:
         json_schema_extra = {

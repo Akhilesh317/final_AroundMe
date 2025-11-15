@@ -1,7 +1,7 @@
 """Search endpoints"""
 from typing import List, Dict, Any
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from app.config import settings
 from app.schemas import SearchRequest, SearchResponse, Place
 from app.schemas.search import SearchDebug
@@ -11,20 +11,26 @@ from app.services.followup_parser import parse_followup
 from app.services.feature_analyzer import analyze_features
 from app.utils.logging import get_logger
 
+
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["search"])
 
-# ✅ STEP 1: In-memory storage (at the TOP, after router definition)
+# In-memory storage for places (since Redis is failing)
 _place_cache: dict[str, dict[str, Any]] = {}
+_result_sets: dict[str, List[str]] = {}  # ✅ NEW: Track which places belong to which result set
 
 
 @router.post("/search", response_model=SearchResponse)
 async def search(
     request: SearchRequest,
+    response: Response,
     redis_client=Depends(get_redis_client),
 ) -> SearchResponse:
     """Search for places around a location"""
+    print(f"\n🚀 ROUTE ENTERED: query={request.query}, is_followup={request.context and request.context.follow_up}")
+    logger.info("🚀 route_entered", query=request.query)
+
 
     # Validate API keys
     if not settings.google_places_api_key:
@@ -33,48 +39,132 @@ async def search(
         raise HTTPException(status_code=500, detail="YELP_API_KEY not configured")
     if not settings.openai_api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
-    
+    print("✅ API keys validated")
+
     try:
         cache = RedisCache(redis_client)
         service = SearchService(cache)
+        print(f"✅ Service created")
+
         
-        # Check if this is a follow-up query
+        # ✅ CHECK IF THIS IS A FOLLOW-UP QUERY
         is_followup = request.context and request.context.follow_up
+        print(f"✅ is_followup={is_followup}")
+
         
         if is_followup and request.context.result_set_id:
-            # Handle follow-up logic...
-            try:
-                cached_results = await cache.get(f"results:{request.context.result_set_id}")
+            logger.info("followup_detected", result_set_id=request.context.result_set_id)
+            print(f"✅ FOLLOWUP PATH: result_set_id={request.context.result_set_id}")
+            # ✅ Get places from in-memory cache
+            result_set_id = request.context.result_set_id
+            place_ids = _result_sets.get(result_set_id, [])
+            
+            print(f"🔍 Looking for result_set_id: {result_set_id}")
+            print(f"📦 Available result_sets: {list(_result_sets.keys())}")
+            print(f"🎯 Found place_ids: {len(place_ids)}")
+            
+            if place_ids:
+                print(f"✅ FOUND {len(place_ids)} places in result set!")
+                # ... rest of code
+            else:
+                print(f"❌ NO PLACES FOUND for result_set_id={result_set_id}")
+                print(f"❌ This means frontend sent wrong ID or backend didn't store it")
+
+                    
+            if place_ids:
+                logger.info("using_inmemory_cache", 
+                           result_set_id=result_set_id,
+                           place_count=len(place_ids))
                 
-                if cached_results:
+                # Reconstruct places from cache
+                from app.schemas.places import Place
+                cached_places = []
+                for place_id in place_ids:
+                    if place_id in _place_cache:
+                        cached_places.append(Place(**_place_cache[place_id]))
+                
+                if cached_places:
                     original_query = request.context.original_query or request.query
+                    
+                    # Parse follow-up intent
                     intent = await parse_followup(
                         followup_text=request.query,
                         original_query=original_query,
                         current_radius=request.radius_m
                     )
                     
-                    logger.info("followup_parsed", intent=intent.model_dump())
+                    logger.info("followup_parsed", 
+                               intent=intent.model_dump(),
+                               cached_count=len(cached_places))
                     
                     if intent.is_new_search and intent.new_query:
+                        # New search needed
+                        logger.info("followup_new_search", new_query=intent.new_query)
                         request.query = intent.new_query
                         response = await service.search(request)
                     else:
+                        # ✅ Filter existing results
+                        logger.info("followup_filtering", filter_count=len(cached_places))
                         response = await apply_followup_filters(
-                            places=cached_results.get("places", []),
+                            places=[p.model_dump() for p in cached_places],
                             intent=intent,
                             request=request
                         )
+                        
+                        # ✅ Generate conversational response
+                        try:
+                            from app.services.conversation_responder import generate_conversational_response
+                            
+                            conversational_text = await generate_conversational_response(
+                                query=request.query,
+                                places=response.places,
+                                context={
+                                    "original_query": original_query,
+                                    "follow_up": True
+                                }
+                            )
+                            response.conversational_response = conversational_text
+                            logger.info("conversational_response_added", 
+                                       length=len(conversational_text))
+                            
+                        except Exception as e:
+                            logger.error("conversational_response_failed", error=str(e))
+                            import traceback
+                            traceback.print_exc()
                     
-                    # Store follow-up results too
+                    # Store filtered results
+                    new_result_set_id = str(uuid4())
+                    new_place_ids = []
+                    
                     for place in response.places:
-                        _place_cache[place.id] = place.model_dump()
+                        place_id = str(place.id)
+                        _place_cache[place_id] = place.model_dump()
+                        new_place_ids.append(place_id)
                     
-                    return response
-            except Exception as e:
-                logger.warning("followup_cache_failed", error=str(e))
+                    _result_sets[new_result_set_id] = new_place_ids
+                    response.result_set_id = new_result_set_id
+                    
+                    logger.info("followup_complete", 
+                               filtered_count=len(response.places))
+                    print(f"✅ FOLLOWUP COMPLETE: {len(response.places)} places after filtering")
+                    # ✅ Add no-cache headers
+                    return Response(
+                        content=response.model_dump_json(),
+                        media_type="application/json",
+                        headers={
+                            "Cache-Control": "no-cache, no-store, must-revalidate",
+                            "Pragma": "no-cache",
+                            "Expires": "0"
+                        }
+                    )
+
+                                
+            logger.warning("followup_no_cache", 
+                          result_set_id=result_set_id,
+                          cache_size=len(_place_cache))
         
-        # Normal search
+        # ✅ NORMAL SEARCH (NOT A FOLLOW-UP)
+        logger.info("normal_search", query=request.query)
         response = await service.search(request)
         
         # AI-powered feature analysis
@@ -100,34 +190,22 @@ async def search(
             except Exception as e:
                 logger.warning("feature_analysis_failed", error=str(e))
         
-        # ✅ STEP 2: Store places in cache (RIGHT BEFORE return statement)
-        # ✅ STEP 2: Store places in cache (RIGHT BEFORE return statement)
-            print(f"\n{'='*60}")
-            print(f"DEBUG: About to cache {len(response.places)} places")
-            print(f"{'='*60}")
-
-            for place in response.places:
-                place_dict = place.model_dump()
-                place_id = str(place.id)  # ✅ Convert UUID to string
-                _place_cache[place_id] = place_dict
-                print(f"✅ Cached: {place_id[:8]}... | {place.name}")
-
-            print(f"\n📦 Total cache size: {len(_place_cache)} places")
-            print(f"{'='*60}\n")
-        
-        
-        # Try Redis cache (optional, can fail)
+        # ✅ Store places in cache with result set tracking
         result_set_id = str(uuid4())
-        try:
-            await cache.set(
-                f"results:{result_set_id}",
-                {"places": [p.model_dump() for p in response.places]},
-                ttl=900
-            )
-        except Exception as e:
-            logger.warning("redis_cache_failed", error=str(e))
+        place_ids = []
         
+        for place in response.places:
+            place_id = str(place.id)
+            _place_cache[place_id] = place.model_dump()
+            place_ids.append(place_id)
+        
+        _result_sets[result_set_id] = place_ids
         response.result_set_id = result_set_id
+        
+        logger.info("search_complete", 
+                   place_count=len(response.places),
+                   result_set_id=result_set_id,
+                   cache_size=len(_place_cache))
         
         return response
         
@@ -138,43 +216,30 @@ async def search(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ✅ STEP 3: Place details endpoint with debug
 @router.get("/places/{place_id}")
 async def get_place_details(place_id: str):
     """Get detailed information about a specific place"""
     
-    print(f"\n{'='*60}")
-    print(f"🔍 DEBUG: Looking for place_id: {place_id}")
-    print(f"📦 Cache size: {len(_place_cache)} places")
-    print(f"🔑 First 5 IDs in cache: {list(_place_cache.keys())[:5]}")
-    print(f"❓ Is requested ID in cache? {place_id in _place_cache}")
-    print(f"{'='*60}\n")
-    
     if place_id not in _place_cache:
-        print(f"❌ ERROR: Place {place_id} NOT FOUND in cache!")
-        print(f"Available IDs: {list(_place_cache.keys())}")
         raise HTTPException(
             status_code=404,
-            detail=f"Place not found. Cache has {len(_place_cache)} places. Please search again."
+            detail=f"Place not found. Please search again."
         )
     
-    print(f"✅ SUCCESS: Found place {place_id}")
     return _place_cache[place_id]
 
 
-# ✅ STEP 4: Debug endpoint to check cache
 @router.get("/debug/cache")
 async def debug_cache():
     """Debug endpoint to check what's in the cache"""
     return {
         "cache_size": len(_place_cache),
-        "place_ids": list(_place_cache.keys()),
-        "place_names": [p.get("name") for p in _place_cache.values()],
-        "sample_place": list(_place_cache.values())[0] if _place_cache else None
+        "result_sets": len(_result_sets),
+        "place_ids": list(_place_cache.keys())[:10],
+        "result_set_ids": list(_result_sets.keys())[:5],
     }
 
 
-# Helper function for follow-up filtering
 async def apply_followup_filters(
     places: List[dict],
     intent,
@@ -187,6 +252,7 @@ async def apply_followup_filters(
     
     filtered_places = place_objects
     
+    # Apply filters based on intent
     if intent.adjust_radius:
         filtered_places = [
             p for p in filtered_places
@@ -205,6 +271,7 @@ async def apply_followup_filters(
             if p.rating and p.rating >= intent.min_rating
         ]
     
+    # Sort results
     if intent.sort_by == "distance":
         filtered_places.sort(key=lambda p: p.distance_km or 999)
     elif intent.sort_by == "rating":

@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'  
 import { useState, Suspense, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { searchPlaces } from '@/lib/api'
@@ -31,6 +31,7 @@ interface Message {
 function ResultsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()  
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [sortBy, setSortBy] = useState<'best' | 'distance' | 'rating'>('best')
   const [chatMessage, setChatMessage] = useState('')
@@ -65,6 +66,19 @@ function ResultsContent() {
 
       const multiEntity = multiEntityStr ? JSON.parse(multiEntityStr) : undefined
 
+      // ✅ ADD DEBUG LOGGING
+      console.log('🔍 Search params:', {
+        query,
+        isFollowup,
+        resultSetId,
+        context: isFollowup ? {
+          follow_up: true,
+          result_set_id: resultSetId,
+          original_query: originalQuery
+        } : undefined
+      })
+
+
       return searchPlaces({
         query,
         lat,
@@ -80,12 +94,21 @@ function ResultsContent() {
         } : undefined,
       })
     },
+    staleTime: 0,  // ✅ Add this - always fetch fresh data
+    gcTime: 0,     // ✅ Add this - don't cache at all
+
   })
 
+  // Add initial query to messages
   // Add initial query to messages
   useEffect(() => {
     if (query && messages.length === 0 && data?.places) {
       const isRefinement = isFollowup && originalQuery !== query
+      // ✅ ADD DEBUG LOGGING
+      console.log('🔍 DEBUG: data.conversational_response:', data.conversational_response)
+      console.log('🔍 DEBUG: isRefinement:', isRefinement)
+      console.log('🔍 DEBUG: places count:', data.places.length)
+
       
       setMessages([
         {
@@ -95,9 +118,12 @@ function ResultsContent() {
         },
         {
           role: 'assistant',
-          content: isRefinement 
-            ? `I filtered the results based on "${query}". Found ${data.places.length} matching places!`
-            : `I found ${data.places.length} places matching "${query}". You can refine your search by asking me to filter by price, distance, ratings, or specific features!`,
+          // ✅ USE AI RESPONSE IF AVAILABLE, OTHERWISE FALLBACK
+          content: data.conversational_response || (
+            isRefinement 
+              ? `I filtered the results based on "${query}". Found ${data.places.length} matching places!`
+              : `I found ${data.places.length} places matching "${query}". You can refine your search by asking me to filter by price, distance, ratings, or specific features!`
+          ),
           timestamp: new Date(),
         },
       ])
@@ -127,6 +153,10 @@ function ResultsContent() {
     }
     setMessages((prev) => [...prev, userMessage])
 
+    // ✅ Invalidate cache before navigation
+    queryClient.removeQueries({ queryKey: ['search'] })
+
+
     // Build search parameters for follow-up
     const params = new URLSearchParams({
       query: userInput,
@@ -153,6 +183,9 @@ function ResultsContent() {
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, userMessage])
+
+        // ✅ Invalidate cache before navigation
+        queryClient.removeQueries({ queryKey: ['search'] })
 
         const params = new URLSearchParams({
           query: refinement,
