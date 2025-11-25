@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Around Me - AI-Powered Place Discovery System</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0A2A43 0%, #164E73 100%);
+            color: #333;
+            padding: 30px;
+        }
+        
+        .poster {
+            width: 1682px;          /* A0 landscape width */
+            min-height: 1189px;     /* at least A0 height, grows if needed */
+            background: white;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 200px;  /* reserve space for QR area */
+        }
+        
+        /* Header Section */
+        .header {
+            background: linear-gradient(135deg, #0A2A43 0%, #164E73 100%);
+            color: white;
+            padding: 40px 50px;     /* more breathing room */
+            text-align: center;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="rgba(34,211,238,0.1)"/></svg>');
+            opacity: 0.3;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .title {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 12px;
+            color: #22D3EE;
+        }
+        
+        .authors {
+            font-size: 19px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        
+        .university {
+            font-size: 17px;
+            opacity: 0.9;
+        }
+        
+        /* Content Container - 2 Column Layout */
+        .content {
+            padding: 35px 50px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            flex: 1;
+            margin-top: 10px;
+        }
+        
+        .left-column,
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+        
+        .section {
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0A2A43;
+            margin-bottom: 12px;
+            border-left: 5px solid #22D3EE;
+            padding-left: 15px;
+        }
+        
+        /* Overview Section */
+        .overview-box {
+            background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%);
+            padding: 22px 28px;
+            border-radius: 12px;
+            font-size: 17px;
+            line-height: 1.7;
+            color: #0A2A43;
+            box-shadow: 0 4px 15px rgba(34, 211, 238, 0.2);
+            border-left: 4px solid #22D3EE;
+        }
+        
+        /* Architecture Diagram */
+        .architecture {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+        
+        .arch-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .arch-box {
+            background: white;
+            border: 2.5px solid #0A2A43;
+            border-radius: 10px;
+            padding: 14px 22px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A2A43;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            min-width: 160px;
+            text-align: center;
+        }
+        
+        .arch-box.ai {
+            background: linear-gradient(135deg, #22D3EE 0%, #0891B2 100%);
+            color: white;
+            border: none;
+        }
+        
+        .arrow {
+            font-size: 32px;
+            color: #0A2A43;
+            font-weight: bold;
+        }
+        
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 2px solid #E0F7FA;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(34, 211, 238, 0.3);
+        }
+        
+        .feature-icon {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #22D3EE 0%, #0891B2 100%);
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+        
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A2A43;
+            margin-bottom: 6px;
+        }
+        
+        .feature-desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        /* Screenshots Section */
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+        }
+        
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #F5F5F5 0%, #E0E0E0 100%);
+            border: 2.5px dashed #0A2A43;
+            border-radius: 10px;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        /* Technical Highlights */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .tech-item {
+            background: #F8FAFC;
+            border-left: 3px solid #22D3EE;
+            padding: 12px 18px;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #0A2A43;
+        }
+        
+        .tech-label {
+            font-weight: 700;
+            color: #0A2A43;
+        }
+        
+        /* Issues Section */
+        .issues-box {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+            padding: 18px 22px;
+            border-radius: 8px;
+        }
+        
+        .issues-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .issues-box ul {
+            margin-left: 20px;
+            margin-top: 6px;
+        }
+        
+        .issues-box li {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        /* Conclusion */
+        .conclusion-box {
+            background: linear-gradient(135deg, #0A2A43 0%, #164E73 100%);
+            color: white;
+            padding: 20px 28px;
+            padding-right: 210px;   /* room for QR block on the right */
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.7;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+        
+        /* QR Code */
+        .qr-section {
+            position: absolute;
+            bottom: 35px;
+            right: 50px;
+            text-align: center;
+        }
+        
+        .qr-placeholder {
+            width: 130px;
+            height: 130px;
+            background: white;
+            border: 2.5px solid #0A2A43;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .qr-label {
+            font-size: 14px;
+            color: #0A2A43;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="title">Around Me – AI-Powered Place Discovery System</div>
+                <div class="subtitle">Multisource Search Using Google Places, Yelp Fusion & ChatGPT</div>
+                <div class="authors">
+                    Sneha Priya Dintyala • Akhilesh Kumar Gopisetty • Alekhya Yalagonda
+                </div>
+                <div class="university">
+                    University of Texas at Arlington • Fall 2025
+                </div>
+            </div>
+        </div>
+        
+        <!-- Content - Two Column Layout -->
+        <div class="content">
+            <!-- LEFT COLUMN -->
+            <div class="left-column">
+                <!-- Overview -->
+                <div class="section">
+                    <div class="section-title">🎯 What We Built</div>
+                    <div class="overview-box">
+                        An <strong>AI-powered smart search assistant</strong> that helps users discover restaurants, cafés, attractions, and nearby places through natural language. The system interprets detailed requirements, combines results from <strong>Google Places</strong>, <strong>Yelp Fusion</strong>, and <strong>ChatGPT</strong>, and delivers accurate, explainable, multi-entity recommendations with conversational follow-ups.
+                    </div>
+                </div>
+                
+                <!-- Architecture -->
+                <div class="section">
+                    <div class="section-title">⚙️ System Architecture</div>
+                    <div class="architecture">
+                        <div class="arch-row">
+                            <div class="arch-box">User Query</div>
+                            <div class="arrow">→</div>
+                            <div class="arch-box ai">ChatGPT Intent Parser</div>
+                            <div class="arrow">→</div>
+                            <div class="arch-box">JSON Intent</div>
+                        </div>
+                        <div class="arch-row">
+                            <div class="arch-box">Google Places API</div>
+                            <div class="arrow">→</div>
+                            <div class="arch-box ai">Provider Fusion</div>
+                            <div class="arrow">←</div>
+                            <div class="arch-box">Yelp Fusion API</div>
+                        </div>
+                        <div class="arch-row">
+                            <div class="arch-box">Unified Results</div>
+                            <div class="arrow">→</div>
+                            <div class="arch-box ai">AI Ranking Engine</div>
+                            <div class="arrow">→</div>
+                            <div class="arch-box">Frontend Interface</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Features -->
+                <div class="section">
+                    <div class="section-title">✨ Key Features</div>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">🧠</div>
+                            <div class="feature-title">NL Understanding</div>
+                            <div class="feature-desc">Complex queries like "family-friendly with parking"</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔗</div>
+                            <div class="feature-title">Multi-Entity</div>
+                            <div class="feature-desc">"Coffee shop near a park" with spatial relations</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔄</div>
+                            <div class="feature-title">Provider Fusion</div>
+                            <div class="feature-desc">Merges Google + Yelp intelligently</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">💬</div>
+                            <div class="feature-title">Follow-Ups</div>
+                            <div class="feature-desc">Refine with "cheaper" or "within 2km"</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">💾</div>
+                            <div class="feature-title">Session Cache</div>
+                            <div class="feature-desc">In-memory result tracking</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📊</div>
+                            <div class="feature-title">Explainable</div>
+                            <div class="feature-desc">Shows score breakdown</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Technical Highlights -->
+                <div class="section">
+                    <div class="section-title">🔧 Technical Stack</div>
+                    <div class="tech-grid">
+                        <div class="tech-item">
+                            <span class="tech-label">Backend:</span> Python, FastAPI, async/await architecture
+                        </div>
+                        <div class="tech-item">
+                            <span class="tech-label">AI Layer:</span> OpenAI GPT-4o-mini for intent parsing & ranking
+                        </div>
+                        <div class="tech-item">
+                            <span class="tech-label">APIs:</span> Google Places API v1 + Yelp Fusion API
+                        </div>
+                        <div class="tech-item">
+                            <span class="tech-label">Caching:</span> In-memory result sets with session tracking
+                        </div>
+                        <div class="tech-item">
+                            <span class="tech-label">Frontend:</span> Next.js, React, TanStack Query
+                        </div>
+                        <div class="tech-item">
+                            <span class="tech-label">Observability:</span> Structured logging with rich debug info
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RIGHT COLUMN -->
+            <div class="right-column">
+                <!-- Screenshots -->
+                <div class="section">
+                    <div class="section-title">📱 User Interface</div>
+                    <div class="screenshots">
+                        <div class="screenshot-placeholder">
+                            [Search Interface Screenshot]
+                        </div>
+                        <div class="screenshot-placeholder">
+                            [Result Cards with Ratings]
+                        </div>
+                        <div class="screenshot-placeholder">
+                            [Follow-up Query Example]
+                        </div>
+                        <div class="screenshot-placeholder">
+                            [Map View & Visualizations]
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Issues & In Progress -->
+                <div class="section">
+                    <div class="section-title">⚠️ Challenges & Ongoing Work</div>
+                    <div class="issues-box">
+                        <div class="issues-title">Transparent Academic Assessment:</div>
+                        <ul>
+                            <li>✅ <strong>Resolved:</strong> Refactored monolithic provider classes to functional approach</li>
+                            <li>✅ <strong>Resolved:</strong> Fixed follow-up queries triggering new searches (Redis → in-memory cache)</li>
+                            <li>✅ <strong>Resolved:</strong> Eliminated duplicate restaurant results through result set tracking</li>
+                            <li>✅ <strong>Resolved:</strong> Corrected requirement extraction (excluded "nearby" from feature requirements)</li>
+                            <li>🔄 <strong>In Progress:</strong> Conversational AI response generation code path debugging</li>
+                            <li>🔄 <strong>In Progress:</strong> Browser cache invalidation for seamless UI updates</li>
+                            <li>🔄 <strong>Future:</strong> Hybrid ranking optimization (rule-based + AI selective refinement)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Conclusion -->
+                <div class="section">
+                    <div class="section-title">🎓 Conclusion & Future Directions</div>
+                    <div class="conclusion-box">
+                        This project demonstrates how <strong>Large Language Models (LLMs)</strong> can be effectively combined with real-world APIs to create intelligent, human-like local discovery systems. By leveraging ChatGPT for natural language understanding and fusing multiple data sources, we achieved a more comprehensive and user-friendly search experience than single-source solutions.
+                        <br><br>
+                        <strong>Future improvements include:</strong> Enhanced conversational experiences with richer AI responses, deployment-ready optimization with proper Redis integration, advanced ranking algorithms using machine learning, and expanded support for complex multi-entity spatial queries.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- QR Code -->
+        <div class="qr-section">
+            <div class="qr-placeholder">
+                QR Code<br>Placeholder
+            </div>
+            <div class="qr-label">Scan for Live Demo</div>
+        </div>
+    </div>
+</body>
+</html>

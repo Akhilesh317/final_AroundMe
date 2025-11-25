@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Around Me – AI-Powered Place Discovery | Research Poster</title>
+    <style>
+        /*
+        IMAGE PLACEHOLDERS - Replace these paths with your actual images:
+        - ./images/ui-search.png (Search interface screenshot)
+        - ./images/ui-results.png (Results cards screenshot)
+        - ./images/ui-conversation.png (Conversation follow-up screenshot)
+        - ./images/ui-map.png (Map view screenshot)
+        - ./images/qr-aroundme.png (QR code for live demo)
+        */
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        @page {
+            size: A0 landscape;
+            margin: 0;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .poster {
+                box-shadow: none;
+            }
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 20px;
+            color: #1e293b;
+        }
+        
+        .poster {
+            width: 2220px;
+            height: 1571px;
+            background: white;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #0891b2 100%);
+            color: white;
+            padding: 150px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+        }
+        
+        .header-content {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            z-index: 10;
+        }
+
+        
+        .title {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            opacity: 0.95;
+            margin-bottom: 16px;
+            color: #22d3ee;
+        }
+        
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .authors {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .university {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .badges {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        /* MAIN CONTENT - 3 COLUMNS */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 28px;
+            padding: 28px 40px;
+            flex: 1;
+        }
+        
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        /* CARD STYLES */
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 14px;
+            border-left: 4px solid #0891b2;
+            padding-left: 12px;
+        }
+        
+        /* PROBLEM & MOTIVATION */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .comparison-block {
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .comparison-block.before {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 2px solid #f87171;
+        }
+        
+        .comparison-block.after {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 2px solid #10b981;
+        }
+        
+        .comparison-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+        
+        .comparison-label {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .comparison-text {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        /* DESIGN GOALS */
+        .goals-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .goal-chip {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            border: 1px solid #0891b2;
+            padding: 10px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            color: #0c4a6e;
+        }
+        
+        /* QUERY GALLERY */
+        .query-gallery {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .query-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        
+        .query-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .query-intent {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        
+        .intent-chip {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .query-meta {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        
+        /* WORKFLOW DIAGRAM */
+        .workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .workflow-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .workflow-node {
+            flex: 1;
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(8, 145, 178, 0.3);
+        }
+        
+        .workflow-node.core {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        }
+        
+        .workflow-node.provider {
+            background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+            font-size: 12px;
+        }
+        
+        .workflow-arrow {
+            font-size: 20px;
+            color: #0891b2;
+            font-weight: bold;
+        }
+        
+        .workflow-caption {
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 4px;
+        }
+        
+        /* METRICS */
+        .metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        
+        .metric-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .metric-icon {
+            font-size: 24px;
+            width: 36px;
+            text-align: center;
+        }
+        
+        .metric-content {
+            flex: 1;
+        }
+        
+        .metric-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .metric-bar {
+            background: #e2e8f0;
+            height: 18px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .metric-fill {
+            background: linear-gradient(90deg, #0891b2 0%, #22d3ee 100%);
+            height: 100%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+        }
+        
+        .metric-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        /* USER JOURNEY */
+        .journey {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        
+        .journey-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #0891b2;
+        }
+        
+        .journey-icon {
+            font-size: 28px;
+            width: 40px;
+            text-align: center;
+        }
+        
+        .journey-text {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .journey-number {
+            font-weight: 700;
+            color: #0891b2;
+        }
+        
+        /* UI SNAPSHOTS */
+        .snapshots-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        
+        .snapshot-tile {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .snapshot-img {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .snapshot-caption {
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+        }
+        
+        .snapshot-icon {
+            font-size: 18px;
+        }
+        
+        .snapshot-label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        /* PROVIDER COMPARISON */
+        .provider-comparison {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .provider-legend {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        
+        .legend-color.google {
+            background: #3b82f6;
+        }
+        
+        .legend-color.yelp {
+            background: #ef4444;
+        }
+        
+        .provider-row {
+            margin-bottom: 10px;
+        }
+        
+        .provider-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .provider-bars {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            height: 20px;
+        }
+        
+        .provider-bar {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .provider-bar.google {
+            background: #3b82f6;
+        }
+        
+        .provider-bar.yelp {
+            background: #ef4444;
+        }
+        
+        .provider-stats {
+            font-size: 11px;
+            color: #64748b;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        
+        /* DEMO & FUTURE */
+        .demo-future {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .qr-box {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .future-text {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .future-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        
+        .future-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .future-list li {
+            font-size: 12px;
+            line-height: 1.6;
+            padding-left: 16px;
+            position: relative;
+        }
+        
+        .future-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: #0891b2;
+            font-weight: bold;
+        }
+        
+        .future-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .future-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .future-card-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .future-card-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        /* FOOTER */
+        .footer {
+            background: #f1f5f9;
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .footer-project {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        
+        .footer-tech {
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-content">
+                <div class="title">Around Me – AI-Powered Place Discovery</div>
+                <div class="subtitle">Intelligent Multi-Source Local Search with LLM Intent Engine & Conversational Follow-ups</div>
+                <div class="meta">
+                    <div>
+                        <div class="authors">Sneha Priya Dintyala • Akhilesh Kumar Gopisetty • Alekhya Yalagonda</div>
+                        <div class="university">University of Texas at Arlington • Computer Science & Engineering • Fall 2024</div>
+                    </div>
+                </div>
+                <div class="badges">
+                    <span class="badge">🧠 LLM Intent Engine</span>
+                    <span class="badge">🔄 Multi-Provider Fusion</span>
+                    <span class="badge">📊 Explainable Ranking</span>
+                    <span class="badge">💬 Conversational Follow-ups</span>
+                    <span class="badge">⚡ Real-time Caching</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- LEFT COLUMN -->
+            <div class="column">
+                <!-- Problem & Motivation -->
+                <div class="card">
+                    <div class="card-title">Problem & Motivation</div>
+                    <div class="comparison">
+                        <div class="comparison-block before">
+                            <div class="comparison-icon">😕</div>
+                            <div class="comparison-label">Before</div>
+                            <div class="comparison-text">
+                                • Simple keyword matching<br>
+                                • Single data source<br>
+                                • No understanding of intent<br>
+                                • Manual refinement needed
+                            </div>
+                        </div>
+                        <div class="comparison-block after">
+                            <div class="comparison-icon">✨</div>
+                            <div class="comparison-label">After</div>
+                            <div class="comparison-text">
+                                • Natural language understanding<br>
+                                • Multi-source intelligence<br>
+                                • Context-aware ranking<br>
+                                • Conversational refinement
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Design Goals -->
+                <div class="card">
+                    <div class="card-title">Design Goals & Objectives</div>
+                    <div class="goals-grid">
+                        <div class="goal-chip">💬 Natural Language Interface</div>
+                        <div class="goal-chip">🌐 Multi-Source Fusion</div>
+                        <div class="goal-chip">🎯 Intent-Driven Search</div>
+                        <div class="goal-chip">🔍 Explainable Results</div>
+                        <div class="goal-chip">⚡ Fast Follow-ups</div>
+                        <div class="goal-chip">📍 Spatial Awareness</div>
+                    </div>
+                </div>
+
+                <!-- Technology Stack -->
+                <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%); border: none;">
+                    <div class="card-title" style="color: #22d3ee; border-left-color: #22d3ee;">⚡ Technology Stack</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: #22d3ee; font-size: 13px; font-weight: 700; margin-bottom: 6px;">🔧 Backend</div>
+                            <div style="color: white; font-size: 12px; line-height: 1.6;">
+                                Python • FastAPI<br>
+                                LangGraph • OpenAI GPT-4
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: #22d3ee; font-size: 13px; font-weight: 700; margin-bottom: 6px;">🎨 Frontend</div>
+                            <div style="color: white; font-size: 12px; line-height: 1.6;">
+                                Next.js • React<br>
+                                TanStack Query • Tailwind
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: #22d3ee; font-size: 13px; font-weight: 700; margin-bottom: 6px;">🌐 APIs</div>
+                            <div style="color: white; font-size: 12px; line-height: 1.6;">
+                                Google Places API<br>
+                                Yelp Fusion API
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="color: #22d3ee; font-size: 13px; font-weight: 700; margin-bottom: 6px;">💾 Caching</div>
+                            <div style="color: white; font-size: 12px; line-height: 1.6;">
+                                In-Memory Store<br>
+                                Session Tracking
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Query Gallery -->
+                <div class="card">
+                    <div class="card-title">Example Query Processing</div>
+                    <div class="query-gallery">
+                        <div class="query-card">
+                            <div class="query-text">"Family-friendly restaurant with parking near me"</div>
+                            <div class="query-intent">
+                                <span class="intent-chip">Type: Restaurant</span>
+                                <span class="intent-chip">Must-have: Family-friendly</span>
+                                <span class="intent-chip">Must-have: Parking</span>
+                                <span class="intent-chip">Location: User</span>
+                            </div>
+                            <div class="query-meta">Fused: Google (28) + Yelp (19) → 35 results • Top-3 ranked</div>
+                        </div>
+                        
+                        <div class="query-card">
+                            <div class="query-text">"Cheap coffee shop within 2km"</div>
+                            <div class="query-intent">
+                                <span class="intent-chip">Type: Cafe</span>
+                                <span class="intent-chip">Price: $</span>
+                                <span class="intent-chip">Distance: 2km</span>
+                            </div>
+                            <div class="query-meta">Fused: Google (15) + Yelp (12) → 22 results • Top-3 ranked</div>
+                        </div>
+                        
+                        <div class="query-card">
+                            <div class="query-text">"Highly-rated sushi place open now"</div>
+                            <div class="query-intent">
+                                <span class="intent-chip">Type: Restaurant</span>
+                                <span class="intent-chip">Cuisine: Sushi</span>
+                                <span class="intent-chip">Filter: Open now</span>
+                                <span class="intent-chip">Sort: Rating</span>
+                            </div>
+                            <div class="query-meta">Fused: Google (9) + Yelp (11) → 16 results • Top-3 ranked</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MIDDLE COLUMN -->
+            <div class="column">
+                <!-- System Workflow -->
+                <div class="card">
+                    <div class="card-title">System Architecture & Workflow</div>
+                    <div class="workflow">
+                        <div class="workflow-row">
+                            <div class="workflow-node core">User Query</div>
+                            <span class="workflow-arrow">→</span>
+                            <div class="workflow-node core">Intent Parse (LLM)</div>
+                        </div>
+                        <div class="workflow-caption">Natural language → Structured intent (type, constraints, requirements)</div>
+                        
+                        <div class="workflow-row">
+                            <div class="workflow-node core">Plan Providers</div>
+                            <span class="workflow-arrow">→</span>
+                            <div class="workflow-node">Call Providers</div>
+                        </div>
+                        
+                        <div class="workflow-row">
+                            <div class="workflow-node provider">Google Places API</div>
+                            <div class="workflow-node provider">Yelp Fusion API</div>
+                        </div>
+                        <div class="workflow-caption">Parallel API calls with query translation</div>
+                        
+                        <div class="workflow-row">
+                            <div class="workflow-node">Fuse & Dedupe</div>
+                            <span class="workflow-arrow">→</span>
+                            <div class="workflow-node">Constraint Join</div>
+                        </div>
+                        <div class="workflow-caption">Name/location matching → Requirement filtering</div>
+                        
+                        <div class="workflow-row">
+                            <div class="workflow-node core">Score & Rank</div>
+                            <span class="workflow-arrow">→</span>
+                            <div class="workflow-node core">Format Answer</div>
+                        </div>
+                        <div class="workflow-caption">Hybrid scoring: Distance + Rating + Reviews + AI refinement</div>
+                    </div>
+                </div>
+                
+                <!-- Quick Metrics -->
+                <div class="card">
+                    <div class="card-title">Performance Metrics</div>
+                    <div class="metrics">
+                        <div class="metric-row">
+                            <div class="metric-icon">🎯</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Intent Extraction Accuracy</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" style="width: 92%;">
+                                        <span class="metric-value">92%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-row">
+                            <div class="metric-icon">🔗</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Fusion Quality (Dedup Success)</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" style="width: 88%;">
+                                        <span class="metric-value">88%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-row">
+                            <div class="metric-icon">⭐</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Top-3 Relevance Rate</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" style="width: 85%;">
+                                        <span class="metric-value">85%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-row">
+                            <div class="metric-icon">⚡</div>
+                            <div class="metric-content">
+                                <div class="metric-label">Avg Response Time</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" style="width: 65%;">
+                                        <span class="metric-value">2.3s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Journey -->
+                <div class="card">
+                    <div class="card-title">User Journey</div>
+                    <div class="journey">
+                        <div class="journey-step">
+                            <div class="journey-icon">🗣️</div>
+                            <div class="journey-text">
+                                <span class="journey-number">1.</span> User types natural language query (e.g., "family restaurant with outdoor seating")
+                            </div>
+                        </div>
+                        
+                        <div class="journey-step">
+                            <div class="journey-icon">🧠</div>
+                            <div class="journey-text">
+                                <span class="journey-number">2.</span> LangGraph + LLM parse intent and plan provider calls
+                            </div>
+                        </div>
+                        
+                        <div class="journey-step">
+                            <div class="journey-icon">🌐</div>
+                            <div class="journey-text">
+                                <span class="journey-number">3.</span> Google Places and Yelp return candidate places in parallel
+                            </div>
+                        </div>
+                        
+                        <div class="journey-step">
+                            <div class="journey-icon">🧮</div>
+                            <div class="journey-text">
+                                <span class="journey-number">4.</span> System fuses, deduplicates, filters by constraints, and ranks by score
+                            </div>
+                        </div>
+                        
+                        <div class="journey-step">
+                            <div class="journey-icon">📱</div>
+                            <div class="journey-text">
+                                <span class="journey-number">5.</span> UI renders ranked cards with explanations and supports follow-up refinements
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RIGHT COLUMN -->
+            <div class="column">
+                <!-- UI Snapshots -->
+                <div class="card">
+                    <div class="card-title">User Interface</div>
+                    <div class="snapshots-grid">
+                        <div class="snapshot-tile">
+                            <div class="snapshot-img">[ui-search.png]</div>
+                            <div class="snapshot-caption">
+                                <span class="snapshot-icon">🔍</span>
+                                <span class="snapshot-label">Search Interface</span>
+                            </div>
+                        </div>
+                        
+                        <div class="snapshot-tile">
+                            <div class="snapshot-img">[ui-results.png]</div>
+                            <div class="snapshot-caption">
+                                <span class="snapshot-icon">📋</span>
+                                <span class="snapshot-label">Result Cards</span>
+                            </div>
+                        </div>
+                        
+                        <div class="snapshot-tile">
+                            <div class="snapshot-img">[ui-conversation.png]</div>
+                            <div class="snapshot-caption">
+                                <span class="snapshot-icon">💬</span>
+                                <span class="snapshot-label">Follow-up Chat</span>
+                            </div>
+                        </div>
+                        
+                        <div class="snapshot-tile">
+                            <div class="snapshot-img">[ui-map.png]</div>
+                            <div class="snapshot-caption">
+                                <span class="snapshot-icon">🗺️</span>
+                                <span class="snapshot-label">Map View</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Provider Comparison -->
+                <div class="card">
+                    <div class="card-title">Google vs Yelp Data Overview</div>
+                    <div class="provider-comparison">
+                        <div class="provider-legend">
+                            <div class="legend-item">
+                                <div class="legend-color google"></div>
+                                <span>Google Places</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color yelp"></div>
+                                <span>Yelp Fusion</span>
+                            </div>
+                        </div>
+                        
+                        <div class="provider-row">
+                            <div class="provider-label">Coverage (Places Found)</div>
+                            <div class="provider-bars">
+                                <div class="provider-bar google" style="width: 180px;"></div>
+                                <span class="provider-stats">G: 680</span>
+                            </div>
+                            <div class="provider-bars">
+                                <div class="provider-bar yelp" style="width: 130px;"></div>
+                                <span class="provider-stats">Y: 480</span>
+                            </div>
+                        </div>
+                        
+                        <div class="provider-row">
+                            <div class="provider-label">Avg Reviews per Place</div>
+                            <div class="provider-bars">
+                                <div class="provider-bar google" style="width: 100px;"></div>
+                                <span class="provider-stats">G: 280</span>
+                            </div>
+                            <div class="provider-bars">
+                                <div class="provider-bar yelp" style="width: 160px;"></div>
+                                <span class="provider-stats">Y: 450</span>
+                            </div>
+                        </div>
+                        
+                        <div class="provider-row">
+                            <div class="provider-label">% with Rating ≥ 4.0</div>
+                            <div class="provider-bars">
+                                <div class="provider-bar google" style="width: 150px;"></div>
+                                <span class="provider-stats">G: 72%</span>
+                            </div>
+                            <div class="provider-bars">
+                                <div class="provider-bar yelp" style="width: 140px;"></div>
+                                <span class="provider-stats">Y: 68%</span>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 10px; color: #94a3b8; margin-top: 8px; text-align: center;">
+                            Representative values from test dataset (Arlington, TX region)
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Demo & Future Work -->
+                <div class="card">
+                    <div class="card-title">Live Demo & Future Work</div>
+                    <div class="demo-future">
+                        <div class="qr-box">[qr-aroundme.png]<br>QR Code</div>
+                        <div class="future-text">
+                            <div class="future-title">🌐 Scan for Live Demo</div>
+                            <ul class="future-list">
+                                <li>Machine learning-based ranking optimization</li>
+                                <li>Route-aware multi-destination search</li>
+                                <li>Redis-based persistent caching layer</li>
+                                <li>Richer explainable UI with score breakdowns</li>
+                                <li>Voice input and accessibility features</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="future-grid">
+                        <div class="future-card">
+                            <div class="future-card-icon">🤖</div>
+                            <div class="future-card-label">ML Ranker</div>
+                        </div>
+                        <div class="future-card">
+                            <div class="future-card-icon">🗺️</div>
+                            <div class="future-card-label">Route Planning</div>
+                        </div>
+                        <div class="future-card">
+                            <div class="future-card-icon">💾</div>
+                            <div class="future-card-label">Redis Cache</div>
+                        </div>
+                        <div class="future-card">
+                            <div class="future-card-icon">🎤</div>
+                            <div class="future-card-label">Voice Input</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- FOOTER -->
+        <div class="footer">
+            <div class="footer-project">Around Me – AI-Powered Place Discovery System</div>
+            <div class="footer-tech">
+                University of Texas at Arlington • MSDS • Fall 2025
+            </div>
+        </div>
+    </div>
+</body>
+</html>
